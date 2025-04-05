@@ -111,7 +111,7 @@ const Search = () => {
         <Text className="text-3xl font-medium mb-4">What's happening?</Text>
 
         {/* Search Input - exact match to image */}
-        <View className="flex-row items-center bg-gray-50 border border-gray-100 rounded-full px-4 py-3 mb-6">
+        <View className="flex-row items-center bg-gray-50 border border-gray-100 rounded-full px-4 h-12 mb-6">
           <Ionicons name="search-outline" size={20} color="#9CA3AF" />
           <TextInput
             className="flex-1 ml-2 text-gray-400"

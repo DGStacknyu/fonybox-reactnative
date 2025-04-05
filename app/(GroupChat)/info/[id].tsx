@@ -3,7 +3,7 @@
 import { ChatListHeader } from "@/components/chats/MainChat/ChatListHeader";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -15,278 +15,79 @@ import {
   Alert,
   TextInput,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { GROUP_CHATS } from "@/constants/chats";
-
-// Sample group chats data structure (same as in the chat detail screen)
-const GROUP_INFO = [
-  {
-    id: "1",
-    name: "Project Alpha Team",
-    avatar: null,
-    initial: "A",
-    color: "#F0D3F7",
-    description:
-      "Team working on Project Alpha - a voice messaging application",
-    createdAt: "January 15, 2025",
-    members: [
-      {
-        id: "user1",
-        name: "Hossein Azarbad",
-        isAdmin: true,
-        color: "#F0D3F7",
-        initial: "H",
-        status: "Online",
-      },
-      {
-        id: "user2",
-        name: "Marvin McKinney",
-        isAdmin: false,
-        color: "#EEEEEE",
-        initial: "M",
-        status: "Online",
-      },
-      {
-        id: "user3",
-        name: "Sarah Johnson",
-        isAdmin: false,
-        color: "#E3F5FF",
-        initial: "S",
-        status: "Last seen 2h ago",
-      },
-      {
-        id: "user4",
-        name: "Alex Chen",
-        isAdmin: false,
-        color: "#FFE8CC",
-        initial: "A",
-        status: "Last seen 1d ago",
-      },
-      {
-        id: "user5",
-        name: "Emily Rodriguez",
-        isAdmin: false,
-        color: "#E0FFE0",
-        initial: "E",
-        status: "Online",
-      },
-      {
-        id: "user6",
-        name: "David Kim",
-        isAdmin: false,
-        color: "#D3E5FF",
-        initial: "D",
-        status: "Last seen just now",
-      },
-    ],
-    memberCount: 12,
-  },
-  {
-    id: "2",
-    name: "Weekend Hangout",
-    avatar: null,
-    initial: "W",
-    color: "#EEEEEE",
-    description: "Planning weekend activities and hangouts",
-    createdAt: "February 28, 2025",
-    members: [
-      {
-        id: "user2",
-        name: "Marvin McKinney",
-        isAdmin: true,
-        color: "#EEEEEE",
-        initial: "M",
-        status: "Online",
-      },
-      {
-        id: "user3",
-        name: "Sarah Johnson",
-        isAdmin: false,
-        color: "#E3F5FF",
-        initial: "S",
-        status: "Last seen 2h ago",
-      },
-      {
-        id: "user5",
-        name: "Emily Rodriguez",
-        isAdmin: false,
-        color: "#E0FFE0",
-        initial: "E",
-        status: "Online",
-      },
-    ],
-    memberCount: 5,
-  },
-  {
-    id: "3",
-    name: "Family Group",
-    avatar: null,
-    initial: "F",
-    color: "#D3E5FF",
-    description: "Family group for sharing updates and photos",
-    createdAt: "March 10, 2025",
-    members: [
-      {
-        id: "user1",
-        name: "Hossein Azarbad",
-        isAdmin: true,
-        color: "#F0D3F7",
-        initial: "H",
-        status: "Online",
-      },
-      {
-        id: "user4",
-        name: "Alex Chen",
-        isAdmin: false,
-        color: "#FFE8CC",
-        initial: "A",
-        status: "Last seen 1d ago",
-      },
-      {
-        id: "user6",
-        name: "David Kim",
-        isAdmin: false,
-        color: "#D3E5FF",
-        initial: "D",
-        status: "Last seen just now",
-      },
-    ],
-    memberCount: 8,
-  },
-  {
-    id: "4",
-    name: "Book Club",
-    avatar: null,
-    initial: "B",
-    color: "#FFE8CC",
-    description: "Discussing our favorite books and authors",
-    createdAt: "April 5, 2025",
-    members: [
-      {
-        id: "user2",
-        name: "Marvin McKinney",
-        isAdmin: true,
-        color: "#EEEEEE",
-        initial: "M",
-        status: "Online",
-      },
-      {
-        id: "user3",
-        name: "Sarah Johnson",
-        isAdmin: false,
-        color: "#E3F5FF",
-        initial: "S",
-        status: "Last seen 2h ago",
-      },
-      {
-        id: "user5",
-        name: "Emily Rodriguez",
-        isAdmin: false,
-        color: "#E0FFE0",
-        initial: "E",
-        status: "Online",
-      },
-    ],
-    memberCount: 6,
-  },
-  {
-    id: "5",
-    name: "Travel Buddies",
-    avatar: null,
-    initial: "T",
-    color: "#E0FFE0",
-    description: "Planning our next travel adventure together",
-    createdAt: "May 15, 2025",
-    members: [
-      {
-        id: "user1",
-        name: "Hossein Azarbad",
-        isAdmin: true,
-        color: "#F0D3F7",
-        initial: "H",
-        status: "Online",
-      },
-      {
-        id: "user4",
-        name: "Alex Chen",
-        isAdmin: false,
-        color: "#FFE8CC",
-        initial: "A",
-        status: "Last seen 1d ago",
-      },
-      {
-        id: "user6",
-        name: "David Kim",
-        isAdmin: false,
-        color: "#D3E5FF",
-        initial: "D",
-        status: "Last seen just now",
-      },
-    ],
-    memberCount: 10,
-  },
-  {
-    id: "6",
-    name: "Cooking Club",
-    avatar: null,
-    initial: "C",
-    color: "#D3E5FF",
-    description: "Sharing recipes and cooking tips",
-    createdAt: "June 20, 2025",
-    members: [
-      {
-        id: "user2",
-        name: "Marvin McKinney",
-        isAdmin: true,
-        color: "#EEEEEE",
-        initial: "M",
-        status: "Online",
-      },
-      {
-        id: "user3",
-        name: "Sarah Johnson",
-        isAdmin: false,
-        color: "#E3F5FF",
-        initial: "S",
-        status: "Last seen 2h ago",
-      },
-      {
-        id: "user5",
-        name: "Emily Rodriguez",
-        isAdmin: false,
-        color: "#E0FFE0",
-        initial: "E",
-        status: "Online",
-      },
-    ],
-    memberCount: 7,
-  },
-];
+import { pb } from "@/components/pocketbaseClient";
+import { useGlobalContext } from "@/lib/AuthContext";
+import { RecordModel } from "pocketbase";
 
 const GroupInfoScreen = () => {
   const { id } = useLocalSearchParams();
-  const [groupChat, setGroupChat] = useState(
-    GROUP_CHATS.find((group) => group.id === id)
-  );
+  const [groupChat, setGroupChat] = useState<RecordModel | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [notifications, setNotifications] = useState(true);
-  const [groupAvatar, setGroupAvatar] = useState(null);
+  const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
+  const [members, setMembers] = useState<RecordModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const { user } = useGlobalContext();
+  const currentUserId = user?.id || null;
 
-  // Current user ID (would come from auth context in a real app)
-  const currentUserId = "user1";
-
-  // Check if current user is an admin
-  const isAdmin = groupChat?.members.some(
-    (member) => member.id === currentUserId && member.isAdmin
+  const isAdmin = members.some(
+    (member) => member.user === currentUserId && member.role === "admin"
   );
 
-  if (!groupChat) {
+  useEffect(() => {
+    const fetchGroupInfo = async () => {
+      try {
+        setIsLoading(true);
+
+        const group = await pb.collection("groups").getOne(id as string, {
+          expand: "created_by",
+        });
+
+        const membersResult = await pb.collection("group_members").getFullList({
+          filter: `group = "${id}"`,
+          expand: "user",
+        });
+
+        setGroupChat(group);
+        setMembers(membersResult);
+
+        if (group.image) {
+          const imageUrl = pb.files.getUrl(group, group.image);
+          setGroupAvatar(imageUrl);
+        }
+
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Error fetching group info:", err);
+        setError("Failed to load group information");
+        setIsLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchGroupInfo();
+    }
+  }, [id]);
+
+  if (isLoading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center">
-        <Text>Group not found</Text>
+        <ActivityIndicator size="large" color="#F52936" />
+        <Text className="mt-4">Loading group info...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !groupChat) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center">
+        <Text>{error || "Group not found"}</Text>
         <TouchableOpacity
           className="mt-4 px-4 py-2 bg-[#F52936] rounded-full"
           onPress={() => router.back()}
@@ -303,19 +104,44 @@ const GroupInfoScreen = () => {
     setIsEditing(true);
   };
 
-  const handleSaveGroup = () => {
-    // In a real app, you would update the group details in your backend
-    setGroupChat({
-      ...groupChat,
-      name: editedName,
-      description: editedDescription,
-      avatar: groupAvatar,
-    });
-    setIsEditing(false);
+  const handleSaveGroup = async () => {
+    try {
+      const formData = new FormData() as any;
+      formData.append("name", editedName);
+      formData.append("description", editedDescription);
+
+      // If user selected a new image and it's different from the current one
+      if (groupAvatar && !groupAvatar.includes(groupChat.id)) {
+        // It's a local file path
+        const filename = groupAvatar.split("/").pop() as any;
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image";
+
+        formData.append("image", {
+          uri: groupAvatar,
+          name: filename,
+          type,
+        });
+      }
+
+      const updatedGroup = await pb
+        .collection("groups")
+        .update(groupChat.id, formData);
+
+      setGroupChat(updatedGroup);
+      if (updatedGroup.image) {
+        const imageUrl = pb.files.getUrl(updatedGroup, updatedGroup.image);
+        setGroupAvatar(imageUrl);
+      }
+
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Error updating group:", err);
+      Alert.alert("Error", "Failed to update group information");
+    }
   };
 
   const handlePickImage = async () => {
-    // No permissions request is necessary for launching the image library
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -329,7 +155,6 @@ const GroupInfoScreen = () => {
   };
 
   const handleAddMember = () => {
-    // In a real app, this would open a contacts picker
     Alert.alert(
       "Add Member",
       "This would open your contacts list to select new members."
@@ -345,13 +170,15 @@ const GroupInfoScreen = () => {
         {
           text: "Remove",
           style: "destructive",
-          onPress: () => {
-            // In a real app, you would remove the member from your backend
-            setGroupChat({
-              ...groupChat,
-              members: groupChat.members.filter((m) => m.id !== memberId),
-              memberCount: groupChat.memberCount - 1,
-            });
+          onPress: async () => {
+            try {
+              await pb.collection("group_members").delete(memberId);
+
+              setMembers(members.filter((m) => m.id !== memberId));
+            } catch (err) {
+              console.error("Error removing member:", err);
+              Alert.alert("Error", "Failed to remove member");
+            }
           },
         },
       ]
@@ -364,13 +191,43 @@ const GroupInfoScreen = () => {
       {
         text: "Leave",
         style: "destructive",
-        onPress: () => {
-          // In a real app, you would remove yourself from the group
-          router.replace("/(GroupChat)");
+        onPress: async () => {
+          try {
+            const currentUserMember = members.find(
+              (m) => m.user === currentUserId
+            );
+            if (currentUserMember) {
+              await pb.collection("group_members").delete(currentUserMember.id);
+            }
+            router.replace("/(GroupChat)");
+          } catch (err) {
+            console.error("Error leaving group:", err);
+            Alert.alert("Error", "Failed to leave group");
+          }
         },
       },
     ]);
   };
+
+  const getInitial = (name: string) => {
+    return name ? name.charAt(0).toUpperCase() : "G";
+  };
+
+  const getColor = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, 70%, 80%)`;
+  };
+
+  const formatDate = (dateString: string | number | Date) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const groupColor = getColor(groupChat.name);
+  const groupInitial = getInitial(groupChat.name);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -400,9 +257,9 @@ const GroupInfoScreen = () => {
                     <View className="relative">
                       <View
                         className="w-24 h-24 rounded-full items-center justify-center"
-                        style={{ backgroundColor: groupChat.color }}
+                        style={{ backgroundColor: groupColor }}
                       >
-                        <Text className="text-3xl">{groupChat.initial}</Text>
+                        <Text className="text-3xl">{groupInitial}</Text>
                       </View>
                       <View className="absolute bottom-0 right-0 bg-[#F52936] w-8 h-8 rounded-full items-center justify-center border-2 border-white">
                         <Ionicons name="camera" size={16} color="white" />
@@ -434,7 +291,11 @@ const GroupInfoScreen = () => {
                   className="bg-gray-200 px-4 py-2 rounded-full mr-2"
                   onPress={() => {
                     setIsEditing(false);
-                    setGroupAvatar(groupChat.avatar); // Reset to original avatar
+                    setGroupAvatar(
+                      groupChat.image
+                        ? pb.files.getUrl(groupChat, groupChat.image)
+                        : null
+                    );
                   }}
                 >
                   <Text>Cancel</Text>
@@ -450,17 +311,17 @@ const GroupInfoScreen = () => {
           ) : (
             <>
               {/* Display group avatar or initial */}
-              {groupChat.avatar || groupAvatar ? (
+              {groupAvatar ? (
                 <Image
-                  source={{ uri: groupChat.avatar || groupAvatar }}
+                  source={{ uri: groupAvatar }}
                   className="w-24 h-24 rounded-full mb-4"
                 />
               ) : (
                 <View
                   className="w-24 h-24 rounded-full items-center justify-center mb-4"
-                  style={{ backgroundColor: groupChat.color }}
+                  style={{ backgroundColor: groupColor }}
                 >
-                  <Text className="text-3xl">{groupChat.initial}</Text>
+                  <Text className="text-3xl">{groupInitial}</Text>
                 </View>
               )}
               <Text className="text-xl font-semibold mb-2">
@@ -469,6 +330,22 @@ const GroupInfoScreen = () => {
               <Text className="text-base text-gray-600 text-center px-6">
                 {groupChat.description}
               </Text>
+              <View className="flex-row items-center mt-2">
+                <Ionicons name="people" size={14} color="#666" />
+                <Text className="text-sm text-gray-500 ml-1">
+                  {groupChat.group_type.charAt(0).toUpperCase() +
+                    groupChat.group_type.slice(1)}{" "}
+                  Group
+                </Text>
+              </View>
+              {groupChat.location && (
+                <View className="flex-row items-center mt-1">
+                  <Ionicons name="location" size={14} color="#666" />
+                  <Text className="text-sm text-gray-500 ml-1">
+                    {groupChat.location}
+                  </Text>
+                </View>
+              )}
               {isAdmin && (
                 <TouchableOpacity
                   className="mt-4 flex-row items-center"
@@ -479,17 +356,17 @@ const GroupInfoScreen = () => {
                 </TouchableOpacity>
               )}
               <Text className="text-sm text-gray-500 mt-2">
-                Created on {groupChat.createdAt}
+                Created on {formatDate(groupChat.created)}
               </Text>
             </>
           )}
         </View>
 
         {/* Members Section */}
-        <View className="mt-6 ">
+        <View className="mt-6">
           <View className="flex-row justify-between items-center mb-3 px-5">
             <Text className="text-lg font-medium">
-              Members ({groupChat.memberCount})
+              Members ({members.length})
             </Text>
             {isAdmin && (
               <TouchableOpacity
@@ -503,48 +380,63 @@ const GroupInfoScreen = () => {
           </View>
 
           <View className="bg-gray-50 rounded-lg">
-            {groupChat.members.map((member) => (
-              <View
-                key={member.id}
-                className="flex-row justify-between items-center p-4 border-b border-gray-100"
-              >
-                <View className="flex-row items-center">
-                  <View
-                    className="w-10 h-10 rounded-full items-center justify-center"
-                    style={{ backgroundColor: member.color }}
-                  >
-                    <Text>{member.initial}</Text>
-                  </View>
-                  <View className="ml-3">
-                    <View className="flex-row items-center">
-                      <Text className="text-base font-medium">
-                        {member.id === currentUserId ? "You" : member.name}
+            {members.map((member) => {
+              const user = member.expand?.user;
+              const userName = user
+                ? user.name || user.username
+                : "Unknown User";
+              const userInitial = userName.charAt(0).toUpperCase();
+              const userColor = getColor(userName);
+
+              return (
+                <View
+                  key={member.id}
+                  className="flex-row justify-between items-center p-4 border-b border-gray-100"
+                >
+                  <View className="flex-row items-center">
+                    <View
+                      className="w-10 h-10 rounded-full items-center justify-center"
+                      style={{ backgroundColor: userColor }}
+                    >
+                      <Text>{userInitial}</Text>
+                    </View>
+                    <View className="ml-3">
+                      <View className="flex-row items-center">
+                        <Text className="text-base font-medium">
+                          {member.user === currentUserId ? "You" : userName}
+                        </Text>
+                        {member.role === "admin" && (
+                          <View className="ml-2 px-2 py-0.5 bg-gray-200 rounded">
+                            <Text className="text-xs">Admin</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="text-xs text-gray-500">
+                        {member.status ||
+                          "Member since " + formatDate(member.joined_at)}
                       </Text>
-                      {member.isAdmin && (
-                        <View className="ml-2 px-2 py-0.5 bg-gray-200 rounded">
-                          <Text className="text-xs">Admin</Text>
-                        </View>
+                      {member.last_seen && (
+                        <Text className="text-xs text-gray-400">
+                          Last seen: {formatDate(member.last_seen)}
+                        </Text>
                       )}
                     </View>
-                    <Text className="text-xs text-gray-500">
-                      {member.status}
-                    </Text>
                   </View>
-                </View>
 
-                {isAdmin && member.id !== currentUserId && (
-                  <TouchableOpacity
-                    onPress={() => handleRemoveMember(member.id)}
-                  >
-                    <Ionicons
-                      name="remove-circle-outline"
-                      size={20}
-                      color="#F52936"
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
+                  {isAdmin && member.user !== currentUserId && (
+                    <TouchableOpacity
+                      onPress={() => handleRemoveMember(member.id)}
+                    >
+                      <Ionicons
+                        name="remove-circle-outline"
+                        size={20}
+                        color="#F52936"
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })}
           </View>
         </View>
 

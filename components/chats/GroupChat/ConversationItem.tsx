@@ -71,7 +71,7 @@ export const ConversationItem = ({ conversation, onPress }: any) => {
 
                 {/* Message count badge */}
                 {conversation.unread && (
-                  <View className="ml-2 bg-[#F52936] px-2 py-0.5 rounded-full">
+                  <View className="ml-2 bg-[#F52936] px-2 py-0.5 rounded-full right-0 absolute">
                     <Text className="text-white text-xs font-medium">
                       {conversation.messageCount}
                     </Text>
@@ -80,11 +80,11 @@ export const ConversationItem = ({ conversation, onPress }: any) => {
               </View>
 
               {/* Display member count for group chats */}
-              {conversation.isGroup && (
+              {/* {conversation.isGroup && (
                 <Text className="text-xs text-gray-500">
                   {conversation.user.status}
                 </Text>
-              )}
+              )} */}
             </View>
           </View>
         </TouchableOpacity>

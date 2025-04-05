@@ -10,8 +10,8 @@ export const ChatListHeader = ({ title, showAddButton = false }: any) => {
 
   return (
     <View
-      className="px-5 pt-3 mt-3 pb-0 bg-white"
-      style={{ paddingTop: Platform.select({ ios: 0, android: 50 }) }}
+      className="px-5 pt-3  pb-0 bg-white"
+      style={{ paddingTop: Platform.select({ ios: 5, android: 60 }) }}
     >
       <View className="flex-row items-center justify-between mb-4">
         <TouchableOpacity onPress={() => router.back()} className="z-10">

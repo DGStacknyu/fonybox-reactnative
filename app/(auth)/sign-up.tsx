@@ -19,90 +19,88 @@ import { Link, router } from "expo-router";
 import { images } from "@/constants";
 
 const SignUp = () => {
-  // const { setUser, setIsLogged } = useGlobalContext();
+  const { setUser, setIsLogged } = useGlobalContext();
   const [isSubmitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
   });
-  // const submit = async () => {
-  //   if (!form.name || !form.email || !form.password) {
-  //     Alert.alert("Error", "Please fill in all fields");
-  //     return;
-  //   }
-
-  //   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  //   if (!emailRegex.test(form.email)) {
-  //     Alert.alert("Error", "Please enter a valid email address");
-  //     return;
-  //   }
-
-  //   if (form.password.length < 8) {
-  //     Alert.alert("Error", "Password must be at least 8 characters long");
-  //     return;
-  //   }
-
-  //   try {
-  //     setSubmitting(true);
-
-  //     const userData = {
-  //       name: form.name,
-  //       email: form.email,
-  //       password: form.password,
-  //       passwordConfirm: form.password,
-  //     };
-
-  //     const createdUser = await pb.collection("users").create(userData);
-  //     console.log("User created successfully:", createdUser);
-
-  //     try {
-  //       const authData = await pb
-  //         .collection("users")
-  //         .authWithPassword(form.email, form.password);
-
-  //       setUser(authData.record);
-  //       setIsLogged(true);
-
-  //       console.log("User authenticated:", authData);
-
-  //       Alert.alert("Success", "Your account has been created successfully!", [
-  //         { text: "OK", onPress: () => router.replace("/home") },
-  //       ]);
-  //     } catch (loginError) {
-  //       console.error("Login failed after registration:", loginError);
-
-  //       Alert.alert(
-  //         "Account Created",
-  //         "Your account has been created. Please sign in.",
-  //         [{ text: "OK", onPress: () => router.replace("/sign-in") }]
-  //       );
-  //     }
-  //   } catch (error: any) {
-  //     console.error("Registration failed:", error);
-  //     if (error.data?.username?.code === "validation_not_unique") {
-  //       Alert.alert(
-  //         "Error",
-  //         "This username is already taken. Please choose another one."
-  //       );
-  //     } else if (error.data?.email?.code === "validation_not_unique") {
-  //       Alert.alert(
-  //         "Error",
-  //         "This email is already registered. Please use a different email."
-  //       );
-  //     } else {
-  //       Alert.alert(
-  //         "Registration Failed",
-  //         error.message || "Something went wrong. Please try again."
-  //       );
-  //     }
-  //   } finally {
-  //     setSubmitting(false);
-  //   }
-  // };
   const submit = async () => {
-    router.push("/sign-in");
+    if (!form.name || !form.email || !form.password) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      Alert.alert("Error", "Please enter a valid email address");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters long");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const userData = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        passwordConfirm: form.password,
+      };
+
+      const createdUser = await pb.collection("users").create(userData);
+      console.log("User created successfully:", createdUser);
+
+      try {
+        const authData = await pb
+          .collection("users")
+          .authWithPassword(form.email, form.password);
+
+        setUser(authData.record);
+        setIsLogged(true);
+
+        console.log("User authenticated:", authData);
+
+        Alert.alert("Success", "Your account has been created successfully!", [
+          { text: "OK", onPress: () => router.replace("/user-details") },
+        ]);
+      } catch (loginError) {
+        console.error("Login failed after registration:", loginError);
+
+        Alert.alert(
+          "Account Created",
+          "Your account has been created. Please sign in.",
+          [{ text: "OK", onPress: () => router.replace("/sign-in") }]
+        );
+      }
+    } catch (error: any) {
+      console.error("Registration failed:", error);
+      if (error.data?.username?.code === "validation_not_unique") {
+        Alert.alert(
+          "Error",
+          "This username is already taken. Please choose another one."
+        );
+      } else if (error.data?.email?.code === "validation_not_unique") {
+        Alert.alert(
+          "Error",
+          "This email is already registered. Please use a different email."
+        );
+      } else {
+        Alert.alert(
+          "Registration Failed",
+          error.message || "Something went wrong. Please try again."
+        );
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <ScrollView>

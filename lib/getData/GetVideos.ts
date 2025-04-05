@@ -31,7 +31,6 @@ export const pbFileUrl = (
   return url;
 };
 
-// Function to get all videos
 export const getVideos = async () => {
   try {
     const records = await pb.collection("videos").getList(1, 50, {
@@ -88,7 +87,7 @@ export const getTrendingVideos = async () => {
   }
 };
 
-export const searchVideos = async (searchQuery) => {
+export const searchVideos = async (searchQuery: string) => {
   try {
     if (!searchQuery || searchQuery.trim() === "") {
       return [];

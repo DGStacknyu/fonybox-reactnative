@@ -9,11 +9,12 @@ const FormField = ({
   handleChangeText,
   otherStyles,
   secureTextEntry,
+  titleStyle,
   ...props
 }: {
-  title: string;
-  value: string;
-  placeholder: string;
+  title?: string;
+  value?: string;
+  placeholder?: string;
   handleChangeText: (text: string) => void;
   otherStyles?: string;
   secureTextEntry?: boolean;
@@ -25,7 +26,9 @@ const FormField = ({
 
   return (
     <View className={`space-y-2 ${otherStyles}`}>
-      <Text className="text-base mb-3 font-pmedium">{title}</Text>
+      <Text className={`text-base mb-3 font-pmedium ${titleStyle}`}>
+        {title}
+      </Text>
 
       <View className="w-full h-16 px-4 rounded-2xl border border-gray-100 focus:border-secondary flex flex-row items-center">
         <TextInput

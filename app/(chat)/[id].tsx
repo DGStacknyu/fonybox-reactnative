@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -408,7 +409,13 @@ const ChatDetailScreen = () => {
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <View className="flex-row items-center px-5 py-2.5 border-b border-[#EEEEEE]">
+      <View
+        className="flex-row items-center px-5 py-2.5 border-b border-[#EEEEEE]"
+        style={{
+          paddingTop:
+            Platform.OS === "android" ? StatusBar?.currentHeight + 20 : 0,
+        }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#637381" />
         </TouchableOpacity>

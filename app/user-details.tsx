@@ -1,4 +1,3 @@
-// Login Form Component
 import { useState } from "react";
 import {
   SafeAreaView,
@@ -11,31 +10,34 @@ import {
   FlatList,
   Platform,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { images } from "../constants";
 import FormField from "@/components/FormField";
-import { AntDesign, EvilIcons, MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import CustomButton from "@/components/CustomButton";
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useGlobalContext } from "@/lib/AuthContext";
+import { pb } from "@/components/pocketbaseClient";
 
-const LoginForm = () => {
+const UserDetailsForm = () => {
+  const { user, setUser } = useGlobalContext();
+
   const [form, setForm] = useState({
-    username: "",
-    name: "",
-    password: "",
-    dob: "",
-    gender: "",
+    username: user.username,
+    name: user.name,
+    date_of_birth: user.date_of_birth,
+    gender: user.gender,
   });
+
+  const [interests, setInterests] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState(new Date());
 
-  // Sample gender options
-  const genderOptions = ["Male", "Female", "Non-binary", "Prefer not to say"];
+  const genderOptions = ["Male", "Female"];
 
-  // Handle date change
-  const onDateChange = (event: any, selectedDate: any) => {
+  const onDateChange = (event: { type: string }, selectedDate: Date) => {
     if (event.type === "dismissed") {
       setShowDatePicker(false);
       return;
@@ -45,11 +47,76 @@ const LoginForm = () => {
     setShowDatePicker(Platform.OS === "ios");
     setDate(currentDate);
 
-    // Format the date to display in the format MM/DD/YYYY
-    const formattedDate = `${
-      currentDate.getMonth() + 1
-    }/${currentDate.getDate()}/${currentDate.getFullYear()}`;
-    setForm({ ...form, dob: formattedDate });
+    // Format as YYYY-MM-DD for PocketBase
+    const formattedDate = formatDateForPocketBase(currentDate);
+    setForm({ ...form, date_of_birth: formattedDate });
+  };
+
+  // Helper function to ensure consistent date formatting for PocketBase
+  const formatDateForPocketBase = (dateObj: Date) => {
+    return `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${dateObj.getDate().toString().padStart(2, "0")}`;
+  };
+
+  // Helper function to format date for display
+  const formatDateForDisplay = (isoDateString: string) => {
+    if (!isoDateString) return "";
+
+    try {
+      const parts = isoDateString.includes("-")
+        ? isoDateString.split("-")
+        : isoDateString.split("/");
+
+      if (parts.length !== 3) return isoDateString;
+
+      if (isoDateString.includes("/")) {
+        return isoDateString;
+      }
+
+      const [year, month, day] = parts;
+      return `${month}/${day}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return isoDateString;
+    }
+  };
+
+  const submit = async () => {
+    if (!form.username || !form.name || !form.date_of_birth || !form.gender) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      let dateOfBirth = form.date_of_birth;
+      if (dateOfBirth.includes("/")) {
+        const [month, day, year] = dateOfBirth.split("/");
+        dateOfBirth = `${year}-${month.padStart(2, "0")}-${day.padStart(
+          2,
+          "0"
+        )}`;
+      }
+
+      const data = {
+        ...form,
+        date_of_birth: dateOfBirth,
+        detailsCompleted: true,
+        interests: interests.join(","),
+        isOnline: true,
+      };
+
+      const updatedUser = await pb.collection("users").update(user.id, data);
+      setUser(updatedUser);
+      router.push("/interest");
+    } catch (error) {
+      console.error("Error updating user details:", error);
+      alert("Failed to save details. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getYears = () => {
@@ -60,6 +127,7 @@ const LoginForm = () => {
     }
     return years;
   };
+
   const renderDatePicker = () => {
     if (Platform.OS === "ios") {
       return (
@@ -77,10 +145,9 @@ const LoginForm = () => {
                 <Text className="text-xl font-bold">Date of Birth</Text>
                 <TouchableOpacity
                   onPress={() => {
-                    const formattedDate = `${
-                      date.getMonth() + 1
-                    }/${date.getDate()}/${date.getFullYear()}`;
-                    setForm({ ...form, dob: formattedDate });
+                    // Use consistent date formatting
+                    const formattedDate = formatDateForPocketBase(date);
+                    setForm({ ...form, date_of_birth: formattedDate });
                     setShowDatePicker(false);
                   }}
                 >
@@ -219,7 +286,6 @@ const LoginForm = () => {
         </Modal>
       );
     } else {
-      // For Android, we'll create a custom picker to match iOS behavior
       return (
         <Modal
           visible={showDatePicker}
@@ -227,7 +293,7 @@ const LoginForm = () => {
           animationType="slide"
         >
           <View className="flex-1 bg-opacity-50 justify-end ">
-            <View className="bg-white rounded-t-3xl ">
+            <View className="bg-white rounded-t-3xl shadow-md">
               <View className="flex-row justify-between items-center px-6 pt-4 ">
                 <TouchableOpacity onPress={() => setShowDatePicker(false)}>
                   <Text className="text-red-500 font-bold text-lg">Cancel</Text>
@@ -235,10 +301,9 @@ const LoginForm = () => {
                 <Text className="text-xl font-bold">Date of Birth</Text>
                 <TouchableOpacity
                   onPress={() => {
-                    const formattedDate = `${
-                      date.getMonth() + 1
-                    }/${date.getDate()}/${date.getFullYear()}`;
-                    setForm({ ...form, dob: formattedDate });
+                    // Use consistent date formatting
+                    const formattedDate = formatDateForPocketBase(date);
+                    setForm({ ...form, date_of_birth: formattedDate });
                     setShowDatePicker(false);
                   }}
                 >
@@ -246,9 +311,7 @@ const LoginForm = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Custom date picker with individual pickers for month, day, year */}
               <View className="flex-row justify-between px-4 py-6">
-                {/* Month picker */}
                 <View className="w-1/4">
                   <Text className="text-center font-bold mb-2">Month</Text>
                   <FlatList
@@ -378,17 +441,9 @@ const LoginForm = () => {
     }
   };
 
-  const submit = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      router.push("/interest");
-    }, 2000);
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <ScrollView className="flex-1 ">
+      <ScrollView className="flex-1">
         <View className="bg-red-500 pt-10 pb-72 relative">
           <Text className="text-white text-4xl mb-8 font-bold text-center">
             User details
@@ -401,21 +456,27 @@ const LoginForm = () => {
             />
           </View>
         </View>
+
         <View className="bg-white -mt-12 rounded-t-3xl px-6 pt-8 pb-12">
+          {/* Username */}
           <FormField
             title="Username"
             value={form.username}
-            handleChangeText={(e: any) => setForm({ ...form, username: e })}
+            handleChangeText={(e) => setForm({ ...form, username: e })}
             otherStyles="mt-4"
             placeholder="Enter your username"
           />
+
+          {/* Name */}
           <FormField
             title="Name"
             value={form.name}
-            handleChangeText={(e: any) => setForm({ ...form, name: e })}
+            handleChangeText={(e) => setForm({ ...form, name: e })}
             otherStyles="mt-4"
-            placeholder="Enter your Name"
+            placeholder="Enter your name"
           />
+
+          {/* Date of Birth */}
           <View className="space-y-2 mt-4">
             <Text className="text-base mb-3 font-pmedium">Date of Birth</Text>
             <TouchableOpacity
@@ -424,12 +485,14 @@ const LoginForm = () => {
             >
               <Text
                 className={
-                  form.dob
+                  form.date_of_birth
                     ? "font-psemibold text-base"
                     : "font-psemibold text-base text-gray-400"
                 }
               >
-                {form.dob || "Select your date of birth"}
+                {form.date_of_birth
+                  ? formatDateForDisplay(form.date_of_birth)
+                  : "Select your date of birth"}
               </Text>
               <MaterialIcons
                 name="keyboard-arrow-down"
@@ -441,6 +504,7 @@ const LoginForm = () => {
 
           {renderDatePicker()}
 
+          {/* Gender */}
           <View className="space-y-2 mt-4">
             <Text className="text-base mb-3 font-pmedium">Gender</Text>
             <TouchableOpacity
@@ -454,7 +518,7 @@ const LoginForm = () => {
                     : "font-psemibold text-base text-gray-400"
                 }
               >
-                {form.gender || "Select your Pronounce"}
+                {form.gender || "Select your gender"}
               </Text>
               <MaterialIcons
                 name="keyboard-arrow-down"
@@ -467,25 +531,22 @@ const LoginForm = () => {
       </ScrollView>
 
       {/* Fixed button at the bottom */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white py-4 px-6 ">
+      <View className="absolute bottom-0 left-0 right-0 bg-white py-4 px-6">
         <CustomButton
           title="Next"
           handlePress={submit}
-          containerStyles="bg-red-500 w-2/3 self-center "
+          containerStyles="bg-red-500 w-2/3 self-center"
           isLoading={isSubmitting}
           textStyles="text-white"
         />
       </View>
 
-      <Modal
-        visible={showGenderDropdown}
-        transparent={true}
-        animationType="slide"
-      >
-        <View className="flex-1 bg-opacity-50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6 shadow-md">
-            <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-xl font-bold">Select Pronounce </Text>
+      {/* Gender Dropdown Modal */}
+      <Modal visible={showGenderDropdown} transparent animationType="slide">
+        <View className="flex-1  bg-opacity-50 justify-end">
+          <View className="bg-white rounded-t-3xl shadow-sm p-6">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold">Select Gender</Text>
               <TouchableOpacity onPress={() => setShowGenderDropdown(false)}>
                 <Text className="text-red-500 font-bold">Close</Text>
               </TouchableOpacity>
@@ -495,7 +556,7 @@ const LoginForm = () => {
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  className={`py-4 border-b border-gray-100 ${
+                  className={`py-4 border-b border-gray-200 ${
                     form.gender === item ? "bg-red-50" : ""
                   }`}
                   onPress={() => {
@@ -503,28 +564,23 @@ const LoginForm = () => {
                     setShowGenderDropdown(false);
                   }}
                 >
-                  <View className="flex-row items-center justify-between">
-                    <Text
-                      className={`text-base ${
-                        form.gender === item ? "text-red-500 font-bold " : ""
-                      }`}
-                    >
-                      {item}
-                    </Text>
-                    {form.gender === item && (
-                      <View className="w-6 h-6 bg-red-500 rounded-full items-center justify-center">
-                        <Text className="text-white font-bold">✓</Text>
-                      </View>
-                    )}
-                  </View>
+                  <Text
+                    className={`text-base ${
+                      form.gender === item ? "text-red-500 font-bold" : ""
+                    }`}
+                  >
+                    {item}
+                  </Text>
                 </TouchableOpacity>
               )}
             />
           </View>
         </View>
       </Modal>
+
+      <StatusBar backgroundColor="#ffffff" style="dark" />
     </SafeAreaView>
   );
 };
 
-export default LoginForm;
+export default UserDetailsForm;

@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
@@ -182,7 +181,7 @@ const Create = () => {
   }, [recordingStatus]);
 
   // Format seconds to mm:ss
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs
@@ -311,12 +310,15 @@ const Create = () => {
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 py-2.5 border-b border-[#EEEEEE]">
+      <View
+        className="flex-row items-center justify-between px-5 py-2.5 border-b border-[#EEEEEE]"
+        style={{ paddingTop: Platform.OS === "android" ? 50 : 0 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#637381" />
         </TouchableOpacity>
         <Text className="text-lg font-medium">Create Post</Text>
-        <View style={{ width: 24 }} /> {/* Empty view for alignment */}
+        <View style={{ width: 24 }} />
       </View>
 
       <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
@@ -539,7 +541,7 @@ const Create = () => {
 
             {/* Action buttons (simplified) */}
             <View
-              className="w-full px-4 flex-row justify-between mt-auto mb-6"
+              className="w-full px-4 flex-row justify-between mt-auto mb-32"
               style={{
                 paddingBottom: Platform.select({ ios: 30, android: 30 }),
               }}

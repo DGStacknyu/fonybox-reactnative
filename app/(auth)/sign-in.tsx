@@ -130,49 +130,49 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const LoginScreen = () => {
-  // const { setUser, setIsLogged } = useGlobalContext();
+  const { setUser, setIsLogged } = useGlobalContext();
   const [isSubmitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
-  const submit = async () => {
-    router.push("/user-details");
-  };
   // const submit = async () => {
-  //   if (!form.email || !form.password) {
-  //     Alert.alert("Error", "Please enter both email and password");
-  //     return;
-  //   }
-
-  //   try {
-  //     setSubmitting(true);
-
-  //     console.log("Attempting to log in...");
-  //     const authData = await pb
-  //       .collection("users")
-  //       .authWithPassword(form.email, form.password);
-  //     setUser(authData.record);
-  //     setIsLogged(true);
-
-  //     console.log("Login successful:", authData);
-
-  //     router.replace("/home");
-  //   } catch (error: any) {
-  //     console.error("Login failed:", error);
-
-  //     if (error.status === 400) {
-  //       Alert.alert("Login Failed", "Invalid email or password");
-  //     } else {
-  //       Alert.alert(
-  //         "Login Failed",
-  //         error.message || "Something went wrong. Please try again."
-  //       );
-  //     }
-  //   } finally {
-  //     setSubmitting(false);
-  //   }
+  //   router.push("/user-details");
   // };
+  const submit = async () => {
+    if (!form.email || !form.password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      console.log("Attempting to log in...");
+      const authData = await pb
+        .collection("users")
+        .authWithPassword(form.email, form.password);
+      setUser(authData.record);
+      setIsLogged(true);
+
+      console.log("Login successful:", authData);
+
+      router.replace("/user-details");
+    } catch (error: any) {
+      console.error("Login failed:", error);
+
+      if (error.status === 400) {
+        Alert.alert("Login Failed", "Invalid email or password");
+      } else {
+        Alert.alert(
+          "Login Failed",
+          error.message || "Something went wrong. Please try again."
+        );
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">

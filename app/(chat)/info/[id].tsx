@@ -1,5 +1,6 @@
 // (Chat)/info/[id].tsx
 
+import { ChatListHeader } from "@/components/chats/MainChat/ChatListHeader";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
@@ -13,6 +14,7 @@ import {
   Switch,
   Alert,
   Image,
+  Platform,
 } from "react-native";
 
 // Sample conversations data (similar to what's used in chat screens)
@@ -167,13 +169,20 @@ const SingleChatInfoScreen = () => {
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 py-2.5 border-b border-[#EEEEEE]">
+      {/* <View
+        className="flex-row items-center justify-between px-5 py-2.5 border-b border-[#EEEEEE]"
+        style={{
+          paddingTop:
+            Platform.OS === "android" ? StatusBar?.currentHeight + 20 : 0,
+        }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#637381" />
         </TouchableOpacity>
         <Text className="text-lg font-medium">Contact Info</Text>
-        <View style={{ width: 24 }} /> {/* Empty view for alignment */}
-      </View>
+        <View style={{ width: 24 }} /> 
+      </View> */}
+      <ChatListHeader title="Contact Info" />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* User Profile */}

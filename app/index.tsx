@@ -11,13 +11,13 @@ import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const HomePage = () => {
-  // const { loading, isLogged } = useGlobalContext();
-  // if (!loading && isLogged) return <Redirect href="/home" />;
+  const { loading, isLogged } = useGlobalContext();
+  if (!loading && isLogged) return <Redirect href="/home" />;
 
   return (
     <LinearGradient colors={["#F96262", "#F52936"]} style={{ flex: 1 }}>
       <SafeAreaView className="h-full">
-        {/* <Loader isLoading={loading} /> */}
+        <Loader isLoading={loading} />
 
         <ScrollView
           contentContainerStyle={{

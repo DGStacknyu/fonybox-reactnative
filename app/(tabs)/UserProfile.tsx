@@ -27,6 +27,7 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { BottomSheetDefaultBackdropProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types";
 import { useGlobalContext } from "@/lib/AuthContext";
+import { pbFileUrl } from "@/lib/getData/GetVideos";
 
 // Audio comment mock data
 const AUDIO_COMMENTS = [
@@ -181,7 +182,7 @@ const AudioComment = ({
 };
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState("posts");
-  // const { logout } = useGlobalContext();
+  const { logout, user } = useGlobalContext();
 
   // Bottom sheet reference
   const commentsSheetRef = useRef<BottomSheet>(null);
@@ -287,14 +288,14 @@ const UserProfile = () => {
       <View className="flex flex-row gap-10 items-center mt-4 mb-2">
         <Image
           source={{
-            uri: "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+            uri: pbFileUrl(user.collectionId, user.id, user.avatar),
           }}
           className="w-32 h-32 rounded-full bg-gray-200"
         />
         <View className="gap-y-3">
-          <Text className="text-xl font-bold">Jaydeep Sharma</Text>
-          <Text className="text-gray-500 ">Mumbai</Text>
-          <Text className="text-gray-700">#photography</Text>
+          <Text className="text-xl font-bold">{user?.name}</Text>
+          <Text className="text-gray-500 ">{user?.location}</Text>
+          <Text className="text-gray-700">{user?.tags}</Text>
         </View>
       </View>
 
@@ -316,7 +317,10 @@ const UserProfile = () => {
 
       {/* Action Buttons */}
       <View className="flex-row gap-5 mt-6">
-        <TouchableOpacity className="flex-1 bg-gray-200 rounded-lg py-3 items-center">
+        <TouchableOpacity
+          className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
+          onPress={() => router.push("/edit-profile")}
+        >
           <Text className="text-gray-700 font-semibold">Edit Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity className="flex-1 bg-gray-200 rounded-lg py-3 items-center">
@@ -390,7 +394,7 @@ const UserProfile = () => {
                 <Ionicons name="arrow-back" size={24} color="#000" />
               </TouchableOpacity>
               <Text className="ml-4 text-lg font-bold text-gray-700">
-                jaydeep_sharma
+                {user?.username}
               </Text>
             </View>
             <TouchableOpacity onPress={logout}>

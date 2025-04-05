@@ -34,45 +34,50 @@ const RootLayout = () => {
     return null;
   }
   return (
-    // <GlobalProvider>
-    <Stack>
-      <Stack.Screen
-        name="index"
-        options={{ headerShown: false }}
-      ></Stack.Screen>
-      <Stack.Screen
-        name="(auth)"
-        options={{ headerShown: false }}
-      ></Stack.Screen>
-      <Stack.Screen
-        name="(tabs)"
-        options={{ headerShown: false }}
-      ></Stack.Screen>
-      <Stack.Screen
-        name="/search/[query]"
-        options={{ headerShown: false }}
-      ></Stack.Screen>
-      <Stack.Screen
-        name="(chat)"
-        options={{ headerShown: false }}
-      ></Stack.Screen>
-      <Stack.Screen
-        name="notifications"
-        options={{ headerShown: false }}
-      ></Stack.Screen>{" "}
-      <Stack.Screen
-        name="interest"
-        options={{ headerShown: false }}
-      ></Stack.Screen>
-      <Stack.Screen
-        name="user-details"
-        options={{ headerShown: false }}
-      ></Stack.Screen>{" "}
-      <Stack.Screen
-        name="(GroupChat)"
-        options={{ headerShown: false }}
-      ></Stack.Screen>
-    </Stack>
+    <GlobalProvider>
+      <Stack>
+        <Stack.Screen
+          name="index"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="(auth)"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="/search/[query]"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="(chat)"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="notifications"
+          options={{ headerShown: false }}
+        ></Stack.Screen>{" "}
+        <Stack.Screen
+          name="interest"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="user-details"
+          options={{ headerShown: false }}
+        ></Stack.Screen>{" "}
+        <Stack.Screen
+          name="(GroupChat)"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="edit-profile"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+      </Stack>
+    </GlobalProvider>
   );
 };
 

@@ -6,9 +6,8 @@ import React, { useEffect } from "react";
 import { Text, View } from "react-native";
 
 const AuthLayout = () => {
-  // const { loading, isLogged } = useGlobalContext();
-
-  // if (!loading && isLogged) return <Redirect href="/home" />;
+  const { loading, isLogged } = useGlobalContext();
+  if (!loading && isLogged) return <Redirect href="/home" />;
 
   return (
     <>
@@ -26,7 +25,7 @@ const AuthLayout = () => {
           }}
         />
       </Stack>
-      {/* <Loader isLoading={loading} /> */}
+      <Loader isLoading={loading} />
       <StatusBar backgroundColor="#161622" style="light" />
     </>
   );
