@@ -1,20 +1,40 @@
-import React from "react";
+import { pb } from "@/components/pocketbaseClient";
+import { useGlobalContext } from "@/lib/AuthContext";
+import { pbFileUrl } from "@/lib/getData/GetVideos";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import React, { useEffect, useMemo } from "react";
 import {
-  View,
+  Alert,
+  FlatList,
+  Image,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
   Text,
   TextInput,
-  Image,
-  FlatList,
-  ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Platform,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { images } from "@/constants";
 
-// Sample data for trending hashtags (exactly as in the image)
+// Function to generate random background colors
+export const getRandomColor = (): string => {
+  const colors = [
+    "#F0D3F7", // Light Purple
+    "#EEEEEE", // Light Gray
+    "#E3F5FF", // Light Blue
+    "#FFE8CC", // Light Orange
+    "#E0FFE0", // Light Green
+    "#D3E5FF", // Light Blue
+    "#FFECDA", // Light Peach
+    "#E5E5FF", // Light Lavender
+    "#FFE8E8", // Light Pink
+    "#D9F2D9", // Light Mint
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
 const TRENDING_HASHTAGS = [
   "#ScienceBreakthroughs",
   "#SportsDigest",
@@ -28,73 +48,112 @@ const TRENDING_HASHTAGS = [
   "#SpaceExploration",
 ];
 
-// Sample data for suggested creators (exactly as in the image)
-const SUGGESTED_CREATORS = [
-  {
-    id: "1",
-    name: "Dave Sulthan",
-    username: "@davesulthan",
-    avatar:
-      "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
-  },
-  {
-    id: "2",
-    name: "Patricia Sanders",
-    username: "@psanders",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cHJvZmlsZSUyMGltYWdlfGVufDB8fDB8fHww",
-  },
-  {
-    id: "3",
-    name: "James Hall",
-    username: "@jameshall",
-    avatar:
-      "https://t4.ftcdn.net/jpg/06/08/55/73/360_F_608557356_ELcD2pwQO9pduTRL30umabzgJoQn5fnd.jpg",
-  },
-  {
-    id: "4",
-    name: "James Hall",
-    username: "@jameshall",
-    avatar:
-      "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
-  },
-  {
-    id: "5",
-    name: "James Hall",
-    username: "@jameshall",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cHJvZmlsZSUyMGltYWdlfGVufDB8fDB8fHww",
-  },
-];
-
 const Search = () => {
-  // Function to get initials from name
-  const getInitials = (name: { split: (arg0: string) => any[][] }) => {
-    return name
-      .split(" ")
-      .map((word: any[]) => word[0])
-      .join("");
+  const [loading, setLoading] = React.useState(false);
+  const [contacts, setContacts] = React.useState<any[]>([]);
+  const { user, isLogged } = useGlobalContext();
+  const [userColors, setUserColors] = React.useState<{ [key: string]: string }>(
+    {}
+  );
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      setLoading(true);
+      try {
+        const records = await pb.collection("users").getList(1, 10, {
+          sort: "name",
+        });
+
+        const fetchedContacts = records.items
+          .map((contactUser) => {
+            const name =
+              contactUser.name || `User ${contactUser.id.substring(0, 4)}`;
+            const initial = name.charAt(0).toUpperCase();
+
+            if (contactUser.id === user.id) return null;
+
+            return {
+              id: contactUser.id,
+              name: name,
+              initial: initial,
+              status: contactUser.online ? "Online" : "Offline",
+              collectionId: contactUser.collectionId,
+              username: contactUser.username,
+              avatar: contactUser.avatar,
+            };
+          })
+          .filter((contact) => contact !== null);
+
+        // Generate a color for each user
+        const newUserColors = { ...userColors };
+        fetchedContacts.forEach((contact) => {
+          if (!newUserColors[contact.id]) {
+            newUserColors[contact.id] = getRandomColor();
+          }
+        });
+        setUserColors(newUserColors);
+
+        setContacts(fetchedContacts);
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+        Alert.alert("Error", "Failed to load contacts");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContacts();
+  }, [isLogged, user, pb]);
+
+  const SUGGESTED_CREATORS = contacts.map((contact) => ({
+    id: contact.id,
+    name: contact.name,
+    username: contact.username,
+    avatar: contact.avatar
+      ? pbFileUrl(contact.collectionId, contact.id, contact.avatar)
+      : null,
+    backgroundColor: userColors[contact.id] || getRandomColor(),
+  }));
+
+  const getInitials = (name: string) => {
+    if (!name) return "?";
+
+    const nameParts = name.trim().split(" ");
+    if (nameParts.length === 1) {
+      return nameParts[0].charAt(0).toUpperCase();
+    }
+
+    return (
+      nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)
+    ).toUpperCase();
   };
 
-  // Render item for creator list
-  const renderCreator = ({ item }) => (
-    <View className="items-center mr-6">
-      {/* Gray circle with user avatar */}
-      <View className="w-32 h-32 rounded-full bg-gray-200 items-center justify-center mb-2">
-        {item.avatar ? (
-          <Image
-            source={{ uri: item.avatar }}
-            className="w-full h-full rounded-full"
-          />
-        ) : (
-          <Text className="text-gray-600 text-lg">
-            {getInitials(item.name)}
-          </Text>
-        )}
+  const renderCreator = ({ item }: any) => (
+    <TouchableOpacity onPress={() => router.push(`/user-profile/${item.id}`)}>
+      <View className="items-center mr-6">
+        <View className="w-32 h-32 rounded-full items-center justify-center mb-2">
+          {item.avatar ? (
+            <Image
+              source={{ uri: item.avatar }}
+              className="w-full h-full rounded-full"
+            />
+          ) : (
+            <View
+              className="w-32 h-32 rounded-full items-center justify-center"
+              style={{ backgroundColor: item.backgroundColor }}
+            >
+              <Text className="text-gray-700 font-bold text-3xl">
+                {getInitials(item.name)}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text className="text-lg font-medium text-center">{item.name}</Text>
+        <Text className="text-sm text-gray-500 text-center">
+          {item.username}
+        </Text>
       </View>
-      <Text className="text-lg font-medium text-center">{item.name}</Text>
-      <Text className="text-sm text-gray-500 text-center">{item.username}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -104,13 +163,13 @@ const Search = () => {
         className="px-4 mt-4"
         style={{
           paddingTop:
-            Platform.OS === "android" ? StatusBar.currentHeight + 10 : 10,
+            Platform.OS === "android"
+              ? (StatusBar.currentHeight || 0) + 10
+              : 10,
         }}
       >
-        {/* Header - What's happening? */}
         <Text className="text-3xl font-medium mb-4">What's happening?</Text>
 
-        {/* Search Input - exact match to image */}
         <View className="flex-row items-center bg-gray-50 border border-gray-100 rounded-full px-4 h-12 mb-6">
           <Ionicons name="search-outline" size={20} color="#9CA3AF" />
           <TextInput
@@ -120,11 +179,9 @@ const Search = () => {
           />
         </View>
 
-        {/* Trending Hashtags Section */}
         <View className="mb-6">
           <Text className="text-2xl font-medium my-4">Trending Hashtags</Text>
 
-          {/* First row of hashtags */}
           <ScrollView
             horizontal={true}
             showsHorizontalScrollIndicator={false}
@@ -144,7 +201,6 @@ const Search = () => {
             ))}
           </ScrollView>
 
-          {/* Second row of hashtags */}
           <ScrollView
             horizontal={true}
             showsHorizontalScrollIndicator={false}
@@ -163,7 +219,6 @@ const Search = () => {
           </ScrollView>
         </View>
 
-        {/* Suggested Creator Section */}
         <View className="mb-6">
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-2xl font-medium mb-4">Suggested Creator</Text>

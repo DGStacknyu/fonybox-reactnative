@@ -1,36 +1,44 @@
-// UserProfile.tsx (Current User Profile Screen)
 import React from "react";
-import { FlatList, Platform, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-// Components
 import PostCard from "@/components/posts/PostCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
 import ProfileActions from "@/components/profile/ProfileActions";
 import ProfileTabs from "@/components/profile/ProfileTabs";
+import PrivateAccountMessage from "@/components/profile/PrivateAccountMessage";
 import CommentsBottomSheet from "@/components/common/CommentsBottomSheet";
 
-// Hooks
-
-// Constants
 import { postData, savedData } from "@/constants/chats";
-import useCurrentUserProfile from "@/hooks/useCurrentUserProfile";
+import useProfileData from "@/hooks/userProfileData";
 
-const UserProfile = () => {
+const UserProfileDetails = () => {
   const {
+    userData,
+    loading,
+    refreshing,
+    error,
     user,
     activeTab,
     setActiveTab,
+    followStatus,
     commentsSheetRef,
+    handleRefresh,
     handleOpenComments,
-    logout,
-    userStats,
-    loading,
-  } = useCurrentUserProfile();
+    shouldShowPosts,
+  } = useProfileData();
 
   const currentData = activeTab === "posts" ? postData : savedData;
 
@@ -38,19 +46,51 @@ const UserProfile = () => {
     <PostCard post={item} onOpenComments={handleOpenComments} />
   );
 
-  const renderHeader = () => (
-    <View>
-      <ProfileHeader userData={user} isCurrentUser={true} />
-      <ProfileStats
-        userData={{ ...user, ...userStats }}
-        loading={loading}
-        isCurrentUser={true}
-      />
-      <ProfileActions userData={user} user={user} isCurrentUser={true} />
-      <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-      <View className="mt-4" />
-    </View>
-  );
+  const renderHeader = () => {
+    if (!userData) return null;
+
+    return (
+      <View>
+        <ProfileHeader userData={userData} />
+        <ProfileStats userData={userData} />
+        <ProfileActions
+          userData={userData}
+          user={user}
+          followStatus={followStatus}
+        />
+
+        {shouldShowPosts() ? (
+          <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        ) : (
+          <PrivateAccountMessage />
+        )}
+        <View className="mt-4" />
+      </View>
+    );
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View className="flex-1 bg-white justify-center items-center">
+        <ActivityIndicator size="large" color="#EF4444" />
+        <Text className="mt-4 text-gray-600">Loading user profile...</Text>
+      </View>
+    );
+  }
+
+  if (error && !refreshing) {
+    return (
+      <View className="flex-1 bg-white justify-center items-center">
+        <Text className="text-red-500">{error}</Text>
+        <TouchableOpacity
+          className="mt-4 bg-gray-200 px-6 py-3 rounded-lg"
+          onPress={handleRefresh}
+        >
+          <Text className="font-semibold">Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -62,20 +102,25 @@ const UserProfile = () => {
                 <Ionicons name="arrow-back" size={24} color="#000" />
               </TouchableOpacity>
               <Text className="ml-4 text-lg font-bold text-gray-700">
-                {user?.username}
+                {userData?.username}
               </Text>
             </View>
-            <TouchableOpacity onPress={logout}>
-              <MaterialCommunityIcons name="logout" size={24} color="black" />
-            </TouchableOpacity>
           </View>
 
           <FlatList
-            data={currentData}
+            data={shouldShowPosts() ? currentData : []}
             renderItem={renderPostItem}
             keyExtractor={(item) => item.id}
             ListHeaderComponent={renderHeader}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={["#EF4444"]}
+                tintColor="#EF4444"
+              />
+            }
             contentContainerStyle={{
               paddingBottom: Platform.select({
                 ios: 50,
@@ -96,4 +141,4 @@ const UserProfile = () => {
   );
 };
 
-export default UserProfile;
+export default UserProfileDetails;

@@ -1,29 +1,27 @@
-import React, { useState, useEffect } from "react";
-import {
-  Text,
-  View,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Platform,
-  KeyboardAvoidingView,
-  Alert,
-} from "react-native";
+import FormField from "@/components/FormField";
+import LocationPicker from "@/components/LocationPicker";
+import ProfileAvatar from "@/components/ProfileAvatar"; // Import the new component
+import { useGlobalContext } from "@/lib/AuthContext";
+import { pbFileUrl } from "@/lib/getData/GetVideos";
 import {
   Ionicons,
-  MaterialIcons,
-  FontAwesome,
-  Feather,
   MaterialCommunityIcons,
+  MaterialIcons,
 } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { useGlobalContext } from "@/lib/AuthContext";
 import * as ImagePicker from "expo-image-picker";
-import FormField from "@/components/FormField";
-import { pbFileUrl } from "@/lib/getData/GetVideos";
-import LocationPicker from "@/components/LocationPicker";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const EditProfile = () => {
   const { user, updateUserProfile, pb } = useGlobalContext();
@@ -37,10 +35,13 @@ const EditProfile = () => {
     tags: user?.tags,
     account_type: user.account_type,
   });
-  const [profileImage, setProfileImage] = useState(
-    pbFileUrl(user.collectionId, user.id, user.avatar) ||
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7f1Es84yxr11Bfj_10hV2_srMeJ-Ry71Yiw&s"
-  );
+
+  const hasAvatar = user?.avatar && user?.collectionId && user?.id;
+  const avatarUrl = hasAvatar
+    ? pbFileUrl(user.collectionId, user.id, user.avatar)
+    : null;
+
+  const [profileImage, setProfileImage] = useState(avatarUrl);
   const [isLoading, setIsLoading] = useState(false);
 
   const pickImage = async () => {
@@ -112,6 +113,7 @@ const EditProfile = () => {
       setIsLoading(false);
     }
   };
+
   const toggleAccountType = (type: string) => {
     setForm({ ...form, account_type: type });
     setDropdownOpen(false);
@@ -151,28 +153,21 @@ const EditProfile = () => {
             paddingBottom: 40,
           }}
         >
-          {/* Profile Image Section */}
           <View className="items-center mt-6 mb-8">
-            <View className="relative">
-              <Image
-                source={{ uri: profileImage }}
-                className="w-32 h-32 rounded-full bg-gray-200"
-              />
-              <TouchableOpacity
-                onPress={pickImage}
-                className="absolute bottom-0 right-0 bg-red-500 p-2 rounded-full"
-              >
-                <FontAwesome name="camera" size={16} color="white" />
-              </TouchableOpacity>
-            </View>
+            <ProfileAvatar
+              imageUrl={profileImage}
+              name={user?.name}
+              size={128}
+              showEditButton={true}
+              onEditPress={pickImage}
+              textSizeClass="text-4xl"
+            />
             <Text className="text-gray-400 mt-3">
               Tap to change profile picture
             </Text>
           </View>
 
-          {/* Form Fields */}
           <View className="space-y-5">
-            {/* Name Field */}
             <FormField
               title="Full Name"
               value={form.name}
@@ -180,7 +175,6 @@ const EditProfile = () => {
               placeholder="Enter your full name"
             />
 
-            {/* Username Field */}
             <FormField
               title="Username"
               value={form.username}
@@ -189,9 +183,7 @@ const EditProfile = () => {
               placeholder="Enter your username"
             />
 
-            {/* Location Field */}
             <View className="mt-4">
-              {/* <Text className="text-gray-500 mb-2 font-medium">Location</Text> */}
               <Text className="text-base font-pmedium text-gray-500 mb-1 ml-1">
                 Location
               </Text>
@@ -201,7 +193,6 @@ const EditProfile = () => {
               />
             </View>
 
-            {/* Bio Field */}
             <View className="mt-4">
               <Text className="text-gray-500 mb-2 font-medium">Bio</Text>
               <View className="border border-gray-300 rounded-lg px-3 py-1">
@@ -218,7 +209,6 @@ const EditProfile = () => {
               </View>
             </View>
 
-            {/* Tags Field */}
             <View className="mt-4">
               <Text className="text-gray-500 mb-2 font-medium">Tags</Text>
               <View className="flex-row items-center border border-gray-300 rounded-lg p-3">
@@ -235,7 +225,6 @@ const EditProfile = () => {
               </Text>
             </View>
 
-            {/* Account Type Dropdown */}
             <View className="mt-4">
               <Text className="text-gray-500 mb-2 font-medium">
                 Account Type
@@ -316,7 +305,6 @@ const EditProfile = () => {
             </View>
           </View>
 
-          {/* Delete Account Button */}
           <TouchableOpacity
             className="mt-12 items-center py-3"
             onPress={() =>

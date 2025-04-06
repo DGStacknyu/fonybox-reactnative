@@ -154,37 +154,31 @@
 // };
 
 // export default Home;
-import React, { useState, useRef, useMemo, useCallback } from "react";
-import {
-  Text,
-  View,
-  Image,
-  TouchableOpacity,
-  FlatList,
-  TextInput,
-  Platform,
-} from "react-native";
-import {
-  Ionicons,
-  FontAwesome,
-  MaterialIcons,
-  Feather,
-  AntDesign,
-  MaterialCommunityIcons,
-  FontAwesome5,
-} from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
 import PostCard from "@/components/posts/PostCard";
-import { router } from "expo-router";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import SearchInput from "@/components/SearchInput";
+import {
+  AntDesign,
+  FontAwesome,
+  FontAwesome5,
+  Ionicons,
+} from "@expo/vector-icons";
 import BottomSheet, {
-  BottomSheetScrollView,
-  BottomSheetTextInput,
   BottomSheetBackdrop,
+  BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { BottomSheetDefaultBackdropProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types";
-import Trending from "@/components/Trending";
-import SearchInput from "@/components/SearchInput";
+import { router } from "expo-router";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  FlatList,
+  Image,
+  Platform,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Audio comment mock data
 const AUDIO_COMMENTS = [
@@ -426,8 +420,8 @@ const UserProfile = () => {
                   </View>
                   <View className="flex-row items-center gap-4">
                     <TouchableOpacity
-                      onPress={() => router.push("/user-details")}
-                      // onPress={() => router.push("/notifications")}
+                      // onPress={() => router.push("/user-details")}
+                      onPress={() => router.push("/notifications")}
                     >
                       <View className="relative">
                         <Ionicons

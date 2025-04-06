@@ -620,3 +620,213 @@ export const GROUP_CHATS = [
 //     },
 //   ],
 // },
+export const AUDIO_COMMENTS = [
+  {
+    id: "1",
+    username: "Abil wardani",
+    avatar:
+      "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+    time: "03:45PM",
+    audioDuration: "01:11",
+    replyCount: "3k",
+    likes: "1.3k",
+    replies: [
+      {
+        id: "1-1",
+        username: "Abil wardani",
+        avatar:
+          "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+        time: "03:45PM",
+        audioDuration: "01:11",
+        replyCount: "3k",
+        likes: "1.3k",
+      },
+      {
+        id: "1-2",
+        username: "Abil wardani",
+        avatar:
+          "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+        time: "03:45PM",
+        audioDuration: "01:11",
+        replyCount: "3k",
+        likes: "1.3k",
+      },
+    ],
+  },
+  {
+    id: "2",
+    username: "Abil wardani",
+    avatar:
+      "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+    time: "03:45PM",
+    audioDuration: "01:11",
+    replyCount: "3k",
+    likes: "1.3k",
+    replies: [],
+  },
+  {
+    id: "3",
+    username: "Abil wardani",
+    avatar:
+      "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+    time: "03:45PM",
+    audioDuration: "01:11",
+    replyCount: "3k",
+    likes: "1.3k",
+    replies: [],
+  },
+];
+export const postData = [
+  {
+    id: "1",
+    avatar:
+      "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+    username: "Jaydeep Sharma",
+    timeAgo: "2 minutes",
+    caption:
+      "I was working on my bike and one of the part randomly fell, can you suggest me the reason?",
+    imageUrl:
+      "https://images.unsplash.com/photo-1741567348603-0bef4612bea2?q=80&w=2138&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    likes: "50k",
+    shares: "24k",
+    commentCount: 24,
+  },
+  {
+    id: "2",
+    avatar:
+      "https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg",
+    username: "Jaydeep Sharma",
+    timeAgo: "15 minutes",
+    caption:
+      "Just finished assembling my new road bike. Any tips for a first-time rider?",
+    imageUrl:
+      "https://images.unsplash.com/photo-1741866987680-5e3d7f052b87?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHx0b3BpYy1mZWVkfDZ8Ym84alFLVGFFMFl8fGVufDB8fHx8fA%3D%3D",
+    likes: "32k",
+    shares: "18k",
+    commentCount: 15,
+  },
+];
+
+export const savedData = [
+  {
+    id: "1",
+    avatar:
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNV2dimRVLDjbd9FtA7z4Qz8wJIVQ_UljnUiB6Zd-5TCWz8-5TFzTZf90&s",
+    username: "Jane Cooper",
+    timeAgo: "15 minutes",
+    caption:
+      "Just finished assembling my new road bike. Any tips for a first-time rider?",
+    imageUrl: "https://via.placeholder.com/400x300",
+    likes: "32k",
+    shares: "18k",
+    commentCount: 15,
+  },
+  {
+    id: "2",
+    avatar:
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSIC58Nd1zNJDZBd_wdQZ3gOUTQLrdSbmlzxv6oelm8bMqr4O_sfTcnBIY&s",
+    username: "Ralph Edwards",
+    timeAgo: "2 minutes",
+    caption:
+      "I was working on my bike and one of the part randomly fell, can you suggest me the reason?",
+    imageUrl: "https://via.placeholder.com/400x300",
+    likes: "50k",
+    shares: "24k",
+    commentCount: 24,
+  },
+];
+
+export const NOTIFICATIONS = [
+  {
+    title: "Today",
+    data: [
+      {
+        id: "1",
+        user: {
+          name: "Oban robert",
+          avatar: null,
+          initial: "O",
+        },
+        message: "respond to your story",
+        timestamp: "1 min ago",
+        unread: false,
+      },
+      {
+        id: "2",
+        user: {
+          name: "Natalia",
+          avatar: null,
+          initial: "N",
+        },
+        message: "Like your story",
+        timestamp: "20 min ago",
+        unread: true,
+      },
+      {
+        id: "3",
+        user: {
+          name: "Roben",
+          avatar: null,
+          initial: "R",
+        },
+        message: "Started follow you",
+        timestamp: "45 min ago",
+        unread: false,
+      },
+    ],
+  },
+  {
+    title: "Yesterday",
+    data: [
+      {
+        id: "4",
+        user: {
+          name: "Anggi",
+          avatar: null,
+          initial: "A",
+        },
+        message: "Started followed you",
+        timestamp: "1 day ago",
+        unread: false,
+      },
+      {
+        id: "5",
+        user: {
+          name: "Pedro",
+          avatar: null,
+          initial: "P",
+        },
+        message: "Like your story",
+        timestamp: "1day ago",
+        unread: false,
+      },
+      {
+        id: "6",
+        user: {
+          name: "Mia",
+          avatar: null,
+          initial: "M",
+        },
+        message: "Respond your story",
+        timestamp: "1 day ago",
+        unread: false,
+      },
+    ],
+  },
+  {
+    title: "This week",
+    data: [
+      {
+        id: "7",
+        user: {
+          name: "Ermi",
+          avatar: null,
+          initial: "E",
+        },
+        message: "Like your story",
+        timestamp: "1 week ago",
+        unread: false,
+      },
+    ],
+  },
+];

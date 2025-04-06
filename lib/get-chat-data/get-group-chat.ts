@@ -2,7 +2,7 @@ import { pb } from "@/components/pocketbaseClient";
 
 export const getGroupChats = async () => {
   try {
-    const records = await pb.collection("groups").getList(1, 50, {
+    const records = await pb.collection("groups").getFullList({
       sort: "-created",
       expand: "created_by",
     });

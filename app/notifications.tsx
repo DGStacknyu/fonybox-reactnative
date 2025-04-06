@@ -1,133 +1,33 @@
-import React, { useState } from "react";
+import { ChatListHeader } from "@/components/chats/MainChat/ChatListHeader";
+import { pb } from "@/components/pocketbaseClient";
+import { NOTIFICATIONS } from "@/constants/chats";
+import { useGlobalContext } from "@/lib/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
+  ActivityIndicator,
   Image,
   SafeAreaView,
-  StatusBar,
-  Platform,
   SectionList,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useRouter } from "expo-router";
 
-const NOTIFICATIONS = [
-  {
-    title: "Today",
-    data: [
-      {
-        id: "1",
-        user: {
-          name: "Oban robert",
-          avatar: null,
-          initial: "O",
-        },
-        message: "respond to your story",
-        timestamp: "1 min ago",
-        unread: false,
-      },
-      {
-        id: "2",
-        user: {
-          name: "Natalia",
-          avatar: null,
-          initial: "N",
-        },
-        message: "Like your story",
-        timestamp: "20 min ago",
-        unread: true,
-      },
-      {
-        id: "3",
-        user: {
-          name: "Roben",
-          avatar: null,
-          initial: "R",
-        },
-        message: "Started follow you",
-        timestamp: "45 min ago",
-        unread: false,
-      },
-    ],
-  },
-  {
-    title: "Yesterday",
-    data: [
-      {
-        id: "4",
-        user: {
-          name: "Anggi",
-          avatar: null,
-          initial: "A",
-        },
-        message: "Started followed you",
-        timestamp: "1 day ago",
-        unread: false,
-      },
-      {
-        id: "5",
-        user: {
-          name: "Pedro",
-          avatar: null,
-          initial: "P",
-        },
-        message: "Like your story",
-        timestamp: "1day ago",
-        unread: false,
-      },
-      {
-        id: "6",
-        user: {
-          name: "Mia",
-          avatar: null,
-          initial: "M",
-        },
-        message: "Respond your story",
-        timestamp: "1 day ago",
-        unread: false,
-      },
-    ],
-  },
-  {
-    title: "This week",
-    data: [
-      {
-        id: "7",
-        user: {
-          name: "Ermi",
-          avatar: null,
-          initial: "E",
-        },
-        message: "Like your story",
-        timestamp: "1 week ago",
-        unread: false,
-      },
-    ],
-  },
-];
+const getFollowRequestCount = async (userId: any) => {
+  try {
+    const result = await pb.collection("follows").getList(1, 1, {
+      filter: `following="${userId}" && status="pending"`,
+      countOnly: true,
+    });
 
-const Header = () => {
-  return (
-    <View
-      className="px-5 pt-3 pb-0 bg-white"
-      style={{ paddingTop: Platform.select({ ios: 0, android: 50 }) }}
-    >
-      <View className="flex-row items-center mb-4">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="pr-4 absolute left-0 z-10"
-        >
-          <Ionicons name="arrow-back" size={24} color="#637381" />
-        </TouchableOpacity>
-
-        <Text className="text-2xl font-medium text-primary w-full text-center">
-          Notifications
-        </Text>
-      </View>
-    </View>
-  );
+    return result.totalItems;
+  } catch (error) {
+    console.error("Error fetching follow request count:", error);
+    return 0;
+  }
 };
 
 const NotificationItem = ({ item }: any) => {
@@ -177,7 +77,6 @@ const NotificationItem = ({ item }: any) => {
   );
 };
 
-// Section Header Component
 const SectionHeader = ({ title }: any) => (
   <View className="px-5 py-2 bg-gray-50">
     <Text className="text-sm font-medium text-gray-500">{title}</Text>
@@ -186,12 +85,62 @@ const SectionHeader = ({ title }: any) => (
 
 const Notifications = () => {
   const router = useRouter();
+  const { user } = useGlobalContext();
+  const [requestCount, setRequestCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRequestCount = async () => {
+      if (user && user.id) {
+        try {
+          const count = await getFollowRequestCount(user.id);
+          setRequestCount(count);
+        } catch (error) {
+          console.error("Error fetching request count:", error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+    fetchRequestCount();
+    const interval = setInterval(fetchRequestCount, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
+      <ChatListHeader title="Notifications" />
+      <TouchableOpacity
+        className="px-5 py-3 bg-white flex-row items-center justify-between"
+        onPress={() => router.push("/follow-requests")}
+      >
+        <View className="flex-row items-center">
+          <Ionicons name="people-outline" size={24} color="#333" />
+          <Text className="font-semibold text-lg text-black ml-3">
+            Follow Requests
+          </Text>
+        </View>
 
-      <Header />
+        <View className="flex-row items-center">
+          {loading ? (
+            <ActivityIndicator size="small" color="#3b82f6" />
+          ) : requestCount > 0 ? (
+            <>
+              <View className="bg-red-500 rounded-full px-2 py-0.5 mr-2">
+                <Text className="text-white font-bold">{requestCount}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </>
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <View className="h-px bg-gray-100 " />
 
       <SectionList
         sections={NOTIFICATIONS}
