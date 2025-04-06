@@ -1,4 +1,3 @@
-// UserList.tsx
 import React from "react";
 import {
   View,
@@ -20,7 +19,6 @@ const UserList = ({
   onEndReached,
   loadingMore,
   hasMore,
-  followStatuses,
   followLoading,
   onFollowToggle,
   emptyMessage,
@@ -66,17 +64,29 @@ const UserList = ({
     );
   }
 
-  const renderFollowButton = (userId: string | number) => {
-    // Get the follow status for this user or use default values
-    const status = followStatuses[userId] || {
+  const renderFollowButton = (user: any) => {
+    const userId = user.id;
+    const isCurrentUser = user.isCurrentUser;
+    const isLoading = followLoading[userId] || false;
+
+    // If this is the current user, show "YOU" badge
+    if (isCurrentUser) {
+      return (
+        <View className="bg-gray-100 rounded-lg py-2 px-6">
+          <Text className="font-medium text-gray-600">YOU</Text>
+        </View>
+      );
+    }
+
+    // Get follow status from the user object
+    const status = user.followStatus || {
       isFollowing: false,
       followStatus: "pending",
     };
+
     const isFollowing = status.isFollowing;
     const followStatus = status.followStatus;
-    const isLoading = followLoading[userId] || false;
 
-    // Determine button style and text based on follow status
     let buttonClass = isFollowing
       ? "bg-white border border-red-500"
       : "bg-red-500";
@@ -106,7 +116,7 @@ const UserList = ({
     );
   };
 
-  const renderItem = ({ item }: any) => {
+  const renderItem = ({ item }: { item: any }) => {
     const user = item;
     const hasAvatar = user.avatar && user.collectionId && user.id;
 
@@ -127,13 +137,17 @@ const UserList = ({
             textSizeClass="text-lg"
           />
           <View className="ml-3">
-            <Text className="font-semibold">{user.name}</Text>
+            <Text className="font-semibold">
+              {user.name}{" "}
+              {user.isCurrentUser && (
+                <Text className="text-gray-500">(You)</Text>
+              )}
+            </Text>
             <Text className="text-gray-500">@{user.username}</Text>
           </View>
         </View>
 
-        {/* Only show follow button if this is not the current user */}
-        {followStatuses && onFollowToggle && renderFollowButton(user.id)}
+        {onFollowToggle && renderFollowButton(user)}
       </TouchableOpacity>
     );
   };

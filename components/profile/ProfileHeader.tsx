@@ -58,39 +58,11 @@
 import React, { useMemo } from "react";
 import { View, Text, Image } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
-import ProfileAvatar from "@/components/ProfileAvatar";
+import ProfileAvatar, {
+  getInitials,
+  getRandomColor,
+} from "@/components/ProfileAvatar";
 import { pbFileUrl } from "@/lib/getData/GetVideos";
-
-// Helper functions for current user profile
-export const getRandomColor = (): string => {
-  const colors = [
-    "#F0D3F7", // Light Purple
-    "#EEEEEE", // Light Gray
-    "#E3F5FF", // Light Blue
-    "#FFE8CC", // Light Orange
-    "#E0FFE0", // Light Green
-    "#D3E5FF", // Light Blue
-    "#FFECDA", // Light Peach
-    "#E5E5FF", // Light Lavender
-    "#FFE8E8", // Light Pink
-    "#D9F2D9", // Light Mint
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
-
-// Function to get initials from user name
-const getInitials = (name: string): string => {
-  if (!name) return "?";
-
-  const nameParts = name.trim().split(" ");
-  if (nameParts.length === 1) {
-    return nameParts[0].charAt(0).toUpperCase();
-  }
-
-  return (
-    nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)
-  ).toUpperCase();
-};
 
 const ProfileHeader = ({ userData, isCurrentUser = false }: any) => {
   const isPublicAccount = !isCurrentUser && userData?.account_type === "public";
@@ -102,18 +74,16 @@ const ProfileHeader = ({ userData, isCurrentUser = false }: any) => {
 
   const hasAvatar = userData?.avatar && userData?.collectionId && userData?.id;
 
-  // Get avatar URL - different implementation for different profile types
   const getAvatarUrl = () => {
     if (!hasAvatar) return null;
     return pbFileUrl(userData.collectionId, userData.id, userData.avatar);
   };
 
-  const avatarUrl = getAvatarUrl();
+  const avatarUrl = getAvatarUrl() || "";
 
   return (
     <View className="flex flex-row gap-10 items-center mt-4 mb-2">
       {isCurrentUser ? (
-        // Current user profile avatar handling
         hasAvatar ? (
           <Image
             source={{ uri: avatarUrl }}
@@ -130,7 +100,6 @@ const ProfileHeader = ({ userData, isCurrentUser = false }: any) => {
           </View>
         )
       ) : (
-        // Other user profile avatar handling
         <ProfileAvatar
           imageUrl={avatarUrl}
           name={userData?.name || ""}
@@ -143,13 +112,11 @@ const ProfileHeader = ({ userData, isCurrentUser = false }: any) => {
         <Text className="text-xl font-bold">{userData?.name}</Text>
 
         {isCurrentUser ? (
-          // Current user profile specific details
           <>
             <Text className="text-gray-500">{userData?.location}</Text>
             <Text className="text-gray-700">{userData?.tags}</Text>
           </>
         ) : (
-          // Other user profile specific details
           <>
             <Text className="text-gray-500">@{userData?.username}</Text>
             <View className="flex-row items-center">

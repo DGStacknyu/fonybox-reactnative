@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGlobalContext } from "@/lib/AuthContext";
 import BottomSheet from "@gorhom/bottom-sheet";
+import {
+  getFollowerCount,
+  getFollowingCount,
+  getPostCount,
+} from "@/lib/FollowStatus";
 
 interface UserStats {
   followers: number;
@@ -12,7 +17,9 @@ const useCurrentUserProfile = () => {
   const [activeTab, setActiveTab] = useState("posts");
   const { logout, user, pb } = useGlobalContext();
   const commentsSheetRef = useRef<BottomSheet>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const snapPoints = useMemo(() => ["75%", "100%"], []);
+  const [followStatus, setFollowStatus] = useState(null);
   const [userStats, setUserStats] = useState<UserStats>({
     followers: 0,
     following: 0,
@@ -28,38 +35,43 @@ const useCurrentUserProfile = () => {
     commentsSheetRef.current?.snapToIndex(0);
   }, []);
 
-  useEffect(() => {
+  const fetchUserStats = useCallback(async () => {
     if (!user?.id) return;
 
-    const fetchUserStats = async () => {
-      setLoading(true);
-      try {
-        const followersResult = await pb.collection("follows").getList(1, 100, {
-          filter: `following="${user.id}"`,
-        });
+    setLoading(true);
+    try {
+      const followers = await getFollowerCount(user.id);
+      const following = await getFollowingCount(user.id);
+      const posts = await getPostCount(user.id);
 
-        const followingResult = await pb.collection("follows").getList(1, 100, {
-          filter: `follower="${user.id}"`,
-        });
+      setUserStats({
+        followers,
+        following,
+        posts,
+      });
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
-        const postsResult = await pb.collection("posts").getList(1, 1, {
-          filter: `user="${user.id}"`,
-        });
+  const refreshUserProfile = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchUserStats();
+      return true;
+    } catch (error) {
+      console.error("Error refreshing profile:", error);
+      return false;
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchUserStats]);
 
-        setUserStats({
-          followers: followersResult.totalItems,
-          following: followingResult.totalItems,
-          posts: postsResult.totalItems,
-        });
-      } catch (error) {
-        console.error("Error fetching user stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchUserStats();
-  }, [user?.id, pb]);
+  }, [fetchUserStats]);
 
   return {
     user,
@@ -72,6 +84,10 @@ const useCurrentUserProfile = () => {
     logout,
     userStats,
     loading,
+    refreshing,
+    refreshUserProfile,
+    followStatus,
+    setFollowStatus,
   };
 };
 

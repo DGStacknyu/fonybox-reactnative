@@ -4,11 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { RecordModel } from "pocketbase";
 import { useGlobalContext } from "@/lib/AuthContext";
-import {
-  getFollowersList,
-  checkFollowStatus,
-  toggleFollowStatus,
-} from "@/lib/FollowStatus";
+import { getFollowersList, toggleFollowStatus } from "@/lib/FollowStatus";
 import UserList from "@/components/UserList";
 
 const FollowersList = () => {
@@ -21,16 +17,13 @@ const FollowersList = () => {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [followStatuses, setFollowStatuses] = useState<{
-    [key: string]: { isFollowing: boolean; followStatus: string };
-  }>({});
   const [followLoading, setFollowLoading] = useState<{
     [key: string]: boolean;
   }>({});
 
   const fetchFollowers = useCallback(
     async (pageNum = 1, shouldRefresh = false) => {
-      if (!id) {
+      if (!id || !user) {
         setError("User ID is missing");
         setLoading(false);
         setRefreshing(false);
@@ -39,14 +32,16 @@ const FollowersList = () => {
 
       try {
         const perPage = 20;
-        const result = await getFollowersList(id as string, pageNum, perPage);
+        const result = await getFollowersList(
+          id as string,
+          user.id,
+          pageNum,
+          perPage
+        );
 
         const followerUsers = result.items
-          .map((follow) => {
-            // Extract the follower user from the expanded data
-            return follow.expand?.follower as RecordModel;
-          })
-          .filter(Boolean); // Filter out any undefined values
+          .map((follow) => follow.expand?.follower as RecordModel)
+          .filter(Boolean);
 
         if (shouldRefresh) {
           setFollowers(followerUsers);
@@ -56,25 +51,6 @@ const FollowersList = () => {
 
         setHasMore(followerUsers.length === perPage);
         setPage(pageNum);
-
-        // Check follow status for each follower
-        if (user && followerUsers.length > 0) {
-          const statuses: {
-            [key: string]: { isFollowing: boolean; followStatus: string };
-          } = {};
-
-          await Promise.all(
-            followerUsers.map(async (follower) => {
-              if (follower.id !== user.id) {
-                const status = await checkFollowStatus(user.id, follower.id);
-                statuses[follower.id] = status;
-              }
-            })
-          );
-
-          setFollowStatuses((prev) => ({ ...prev, ...statuses }));
-        }
-
         setError("");
       } catch (err) {
         console.error("Error fetching followers:", err);
@@ -103,31 +79,38 @@ const FollowersList = () => {
 
   const handleFollowToggle = useCallback(
     async (followerId: string) => {
-      if (!user || user.id === followerId) return;
+      if (!user) return;
+      if (followerId === user.id) return;
 
       setFollowLoading((prev) => ({ ...prev, [followerId]: true }));
 
       try {
-        const currentStatus = followStatuses[followerId];
-        const isCurrentlyFollowing = currentStatus?.isFollowing || false;
+        const followerIndex = followers.findIndex((f) => f.id === followerId);
+        if (followerIndex === -1) return;
+
+        const follower = followers[followerIndex];
+        const currentStatus = follower.followStatus?.isFollowing || false;
 
         const result = await toggleFollowStatus(
           user.id,
           followerId,
-          isCurrentlyFollowing
+          currentStatus
         );
 
-        setFollowStatuses((prev) => ({
-          ...prev,
-          [followerId]: result,
-        }));
+        const updatedFollowers = [...followers];
+        updatedFollowers[followerIndex] = {
+          ...updatedFollowers[followerIndex],
+          followStatus: result,
+        };
+
+        setFollowers(updatedFollowers);
       } catch (error) {
         console.error("Error toggling follow status:", error);
       } finally {
         setFollowLoading((prev) => ({ ...prev, [followerId]: false }));
       }
     },
-    [user, followStatuses]
+    [user, followers]
   );
 
   useEffect(() => {
@@ -163,7 +146,6 @@ const FollowersList = () => {
         onEndReached={handleLoadMore}
         loadingMore={loadingMore}
         hasMore={hasMore}
-        followStatuses={followStatuses}
         followLoading={followLoading}
         onFollowToggle={handleFollowToggle}
         emptyMessage={

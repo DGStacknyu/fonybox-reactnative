@@ -38,27 +38,30 @@ const UserProfileDetails = () => {
     handleRefresh,
     handleOpenComments,
     shouldShowPosts,
+    userStats,
   } = useProfileData();
 
   const currentData = activeTab === "posts" ? postData : savedData;
 
   const renderPostItem = ({ item }: any) => (
-    <PostCard post={item} onOpenComments={handleOpenComments} />
+    <PostCard post={item} onOpenComments={() => handleOpenComments(item.id)} />
   );
 
   const renderHeader = () => {
     if (!userData) return null;
-
     return (
       <View>
         <ProfileHeader userData={userData} />
-        <ProfileStats userData={userData} />
+        <ProfileStats
+          userData={userData}
+          userStats={userStats}
+          loading={loading}
+        />
         <ProfileActions
           userData={userData}
           user={user}
           followStatus={followStatus}
         />
-
         {shouldShowPosts() ? (
           <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
         ) : (

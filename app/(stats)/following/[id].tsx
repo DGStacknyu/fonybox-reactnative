@@ -4,11 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { RecordModel } from "pocketbase";
 import { useGlobalContext } from "@/lib/AuthContext";
-import {
-  getFollowingList,
-  checkFollowStatus,
-  toggleFollowStatus,
-} from "@/lib/FollowStatus";
+import { getFollowingList, toggleFollowStatus } from "@/lib/FollowStatus";
 import UserList from "@/components/UserList";
 
 const FollowingList = () => {
@@ -21,16 +17,13 @@ const FollowingList = () => {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [followStatuses, setFollowStatuses] = useState<{
-    [key: string]: { isFollowing: boolean; followStatus: string };
-  }>({});
   const [followLoading, setFollowLoading] = useState<{
     [key: string]: boolean;
   }>({});
 
   const fetchFollowing = useCallback(
     async (pageNum = 1, shouldRefresh = false) => {
-      if (!id) {
+      if (!id || !user) {
         setError("User ID is missing");
         setLoading(false);
         setRefreshing(false);
@@ -39,12 +32,16 @@ const FollowingList = () => {
 
       try {
         const perPage = 20;
-        const result = await getFollowingList(id as string, pageNum, perPage);
+        // Get following list with current user ID to check follow status
+        const result = await getFollowingList(
+          id as string,
+          user.id,
+          pageNum,
+          perPage
+        );
 
         const followingUsers = result.items
-          .map((follow) => {
-            return follow.expand?.following as RecordModel;
-          })
+          .map((follow) => follow.expand?.following as RecordModel)
           .filter(Boolean);
 
         if (shouldRefresh) {
@@ -55,31 +52,10 @@ const FollowingList = () => {
 
         setHasMore(followingUsers.length === perPage);
         setPage(pageNum);
-
-        if (user && followingUsers.length > 0) {
-          const statuses: {
-            [key: string]: { isFollowing: boolean; followStatus: string };
-          } = {};
-
-          await Promise.all(
-            followingUsers.map(async (followingUser) => {
-              if (followingUser.id !== user.id) {
-                const status = await checkFollowStatus(
-                  user.id,
-                  followingUser.id
-                );
-                statuses[followingUser.id] = status;
-              }
-            })
-          );
-
-          setFollowStatuses((prev) => ({ ...prev, ...statuses }));
-        }
-
         setError("");
       } catch (err) {
-        console.error("Error fetching following users:", err);
-        setError("Failed to load following users");
+        console.error("Error fetching following:", err);
+        setError("Failed to load following");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -103,32 +79,44 @@ const FollowingList = () => {
   }, [loadingMore, hasMore, page, fetchFollowing]);
 
   const handleFollowToggle = useCallback(
-    async (followingUserId: string) => {
-      if (!user || user.id === followingUserId) return;
+    async (followingId: string) => {
+      if (!user) return;
 
-      setFollowLoading((prev) => ({ ...prev, [followingUserId]: true }));
+      // Skip toggle for current user
+      if (followingId === user.id) return;
+
+      setFollowLoading((prev) => ({ ...prev, [followingId]: true }));
 
       try {
-        const currentStatus = followStatuses[followingUserId];
-        const isCurrentlyFollowing = currentStatus?.isFollowing || false;
+        // Find the following user in our list
+        const followingIndex = following.findIndex((f) => f.id === followingId);
+        if (followingIndex === -1) return;
 
+        const followingUser = following[followingIndex];
+        const currentStatus = followingUser.followStatus?.isFollowing || false;
+
+        // Toggle the follow status
         const result = await toggleFollowStatus(
           user.id,
-          followingUserId,
-          isCurrentlyFollowing
+          followingId,
+          currentStatus
         );
 
-        setFollowStatuses((prev) => ({
-          ...prev,
-          [followingUserId]: result,
-        }));
+        // Update the following user in our list with new status
+        const updatedFollowing = [...following];
+        updatedFollowing[followingIndex] = {
+          ...updatedFollowing[followingIndex],
+          followStatus: result,
+        };
+
+        setFollowing(updatedFollowing);
       } catch (error) {
         console.error("Error toggling follow status:", error);
       } finally {
-        setFollowLoading((prev) => ({ ...prev, [followingUserId]: false }));
+        setFollowLoading((prev) => ({ ...prev, [followingId]: false }));
       }
     },
-    [user, followStatuses]
+    [user, following]
   );
 
   useEffect(() => {
@@ -151,8 +139,8 @@ const FollowingList = () => {
         </View>
         <Text className="text-gray-500">
           {id === user?.id
-            ? "People you follow"
-            : `People @${profileUsername} follows`}
+            ? "You're following"
+            : `@${profileUsername} is following`}
         </Text>
       </View>
 
@@ -164,12 +152,11 @@ const FollowingList = () => {
         onEndReached={handleLoadMore}
         loadingMore={loadingMore}
         hasMore={hasMore}
-        followStatuses={followStatuses}
         followLoading={followLoading}
         onFollowToggle={handleFollowToggle}
         emptyMessage={
           id === user?.id
-            ? "You aren't following anyone yet"
+            ? "You're not following anyone yet"
             : "This user isn't following anyone yet"
         }
         error={error}

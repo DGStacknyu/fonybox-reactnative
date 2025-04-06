@@ -1,12 +1,13 @@
-// UserProfile.tsx (Current User Profile Screen)
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { FlatList, Platform, Text, TouchableOpacity, View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  GestureHandlerRootView,
+  RefreshControl,
+} from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-// Components
 import PostCard from "@/components/posts/PostCard";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
@@ -14,9 +15,6 @@ import ProfileActions from "@/components/profile/ProfileActions";
 import ProfileTabs from "@/components/profile/ProfileTabs";
 import CommentsBottomSheet from "@/components/common/CommentsBottomSheet";
 
-// Hooks
-
-// Constants
 import { postData, savedData } from "@/constants/chats";
 import useCurrentUserProfile from "@/hooks/useCurrentUserProfile";
 
@@ -30,10 +28,22 @@ const UserProfile = () => {
     logout,
     userStats,
     loading,
+    refreshUserProfile,
+    followStatus,
   } = useCurrentUserProfile();
 
   const currentData = activeTab === "posts" ? postData : savedData;
-
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshUserProfile();
+    } catch (error) {
+      console.error("Error refreshing profile:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshUserProfile]);
   const renderPostItem = ({ item }: any) => (
     <PostCard post={item} onOpenComments={handleOpenComments} />
   );
@@ -42,11 +52,17 @@ const UserProfile = () => {
     <View>
       <ProfileHeader userData={user} isCurrentUser={true} />
       <ProfileStats
-        userData={{ ...user, ...userStats }}
+        userData={user}
+        userStats={userStats}
         loading={loading}
         isCurrentUser={true}
+      />{" "}
+      <ProfileActions
+        userData={user}
+        user={user}
+        isCurrentUser={true}
+        followStatus={followStatus}
       />
-      <ProfileActions userData={user} user={user} isCurrentUser={true} />
       <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
       <View className="mt-4" />
     </View>
@@ -69,13 +85,20 @@ const UserProfile = () => {
               <MaterialCommunityIcons name="logout" size={24} color="black" />
             </TouchableOpacity>
           </View>
-
           <FlatList
             data={currentData}
             renderItem={renderPostItem}
             keyExtractor={(item) => item.id}
             ListHeaderComponent={renderHeader}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#3b82f6"]}
+                tintColor="#3b82f6"
+              />
+            }
             contentContainerStyle={{
               paddingBottom: Platform.select({
                 ios: 50,

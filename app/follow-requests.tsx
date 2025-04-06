@@ -1,5 +1,6 @@
 import { ChatListHeader } from "@/components/chats/MainChat/ChatListHeader";
 import { pb } from "@/components/pocketbaseClient";
+import { getInitials } from "@/components/ProfileAvatar";
 import { useGlobalContext } from "@/lib/AuthContext";
 import { pbFileUrl } from "@/lib/getData/GetVideos";
 import { Ionicons } from "@expo/vector-icons";
@@ -81,22 +82,62 @@ const FollowRequests = () => {
     const requester = item.expand?.follower;
     if (!requester) return null;
 
+    const hasAvatar =
+      requester.avatar && requester.collectionId && requester.id;
+
+    const getColorFromUsername = (username: string) => {
+      const colors = [
+        "#F87171",
+        "#FB923C",
+        "#FBBF24",
+        "#A3E635",
+        "#34D399", // emerald
+        "#22D3EE", // cyan
+        "#60A5FA", // blue
+        "#818CF8", // indigo
+        "#A78BFA", // violet
+        "#E879F9", // fuchsia
+      ];
+
+      let hash = 0;
+      for (let i = 0; i < requester.username.length; i++) {
+        hash = requester.username.charCodeAt(i) + ((hash << 5) - hash);
+      }
+
+      const index = Math.abs(hash) % colors.length;
+      return colors[index];
+    };
+
+    const userInitials = getInitials(requester.name);
+    const backgroundColor = getColorFromUsername(requester.username);
+
     return (
       <View className="flex-row items-center justify-between py-4 border-b border-gray-100">
         <TouchableOpacity
           className="flex-row items-center flex-1"
           onPress={() => router.push(`/user-profile/${requester.id}`)}
         >
-          <Image
-            source={{
-              uri: pbFileUrl(
-                requester.collectionId || "",
-                requester.id || "",
-                requester.avatar
-              ),
-            }}
-            className="w-14 h-14 rounded-full bg-gray-200"
-          />
+          {hasAvatar ? (
+            <Image
+              source={{
+                uri: pbFileUrl(
+                  requester.collectionId,
+                  requester.id,
+                  requester.avatar
+                ),
+              }}
+              className="w-14 h-14 rounded-full bg-gray-200"
+            />
+          ) : (
+            <View
+              className="w-14 h-14 rounded-full items-center justify-center"
+              style={{ backgroundColor }}
+            >
+              <Text className="text-white font-bold text-lg">
+                {userInitials}
+              </Text>
+            </View>
+          )}
           <View className="ml-3 flex-1">
             <Text className="font-bold text-gray-800">{requester.name}</Text>
             <Text className="text-gray-500">@{requester.username}</Text>

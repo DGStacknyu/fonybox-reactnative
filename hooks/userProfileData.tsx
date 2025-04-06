@@ -1,14 +1,12 @@
-// useProfileData.tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { useGlobalContext } from "@/lib/AuthContext";
-import BottomSheet from "@gorhom/bottom-sheet";
+import { pb } from "@/components/pocketbaseClient";
 import {
-  checkFollowStatus,
-  getUserProfile,
   getFollowerCount,
   getFollowingCount,
   getPostCount,
+  getFollowStatus,
   toggleFollowStatus,
 } from "@/lib/FollowStatus";
 import { RecordModel } from "pocketbase";
@@ -21,27 +19,14 @@ const useProfileData = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("posts");
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followStatus, setFollowStatus] = useState("pending");
-  const [followLoading, setFollowLoading] = useState(false);
-  const [mutualFollow, setMutualFollow] = useState(false);
+  const [followStatus, setFollowStatus] = useState(null);
+  const commentsSheetRef = useRef(null);
 
-  // Stats counts
-  const [followerCount, setFollowerCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-  const [postCount, setPostCount] = useState(0);
-
-  // Bottom sheet ref
-  const commentsSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["75%", "100%"], []);
-
-  const handleSheetChanges = useCallback((index: any) => {
-    console.log("handleSheetChanges", index);
-  }, []);
-
-  const handleOpenComments = useCallback(() => {
-    commentsSheetRef.current?.snapToIndex(0);
-  }, []);
+  const [userStats, setUserStats] = useState({
+    followerCount: 0,
+    followingCount: 0,
+    postCount: 0,
+  });
 
   const fetchUserStats = async (userId: string) => {
     try {
@@ -49,76 +34,61 @@ const useProfileData = () => {
       const following = await getFollowingCount(userId);
       const posts = await getPostCount(userId);
 
-      setFollowerCount(followers);
-      setFollowingCount(following);
-      setPostCount(posts);
-
-      // Add the counts to userData for easier access
-      setUserData((prevData) => ({
-        ...(prevData as RecordModel),
+      setUserStats({
         followerCount: followers,
         followingCount: following,
         postCount: posts,
-      }));
+      });
     } catch (error) {
       console.error("Error fetching user stats:", error);
     }
   };
 
-  const fetchProfileData = useCallback(async () => {
-    if (!id) {
-      setError("No user ID provided");
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
+  const fetchUserData = async () => {
     try {
-      const record = await getUserProfile(id);
-      setUserData(record);
+      const userRecord = await pb.collection("users").getOne(id as string);
+      setUserData(userRecord);
 
-      // Fetch user stats
-      await fetchUserStats(id);
+      await fetchUserStats(id as string);
 
-      if (user && user.id && user.id !== id) {
-        const status = await checkFollowStatus(user.id, id);
-        setIsFollowing(status.isFollowing);
-        setFollowStatus(status.followStatus);
-
-        const mutualStatus = await checkFollowStatus(id, user.id);
-        setMutualFollow(
-          status.isFollowing &&
-            status.followStatus === "accepted" &&
-            mutualStatus.isFollowing &&
-            mutualStatus.followStatus === "accepted"
-        );
+      if (user && user.id !== id) {
+        const status = await getFollowStatus(user.id, id as string);
+        console.log("Fetched follow status:", status);
+        setFollowStatus(status);
       }
-
       setError("");
     } catch (error) {
-      console.error("Error loading profile:", error);
-      setError("Failed to load user data");
+      console.error("Error fetching user data:", error);
+      setError("Failed to load user profile");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [id, user]);
-
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchProfileData();
-  }, [fetchProfileData]);
-
-  const shouldShowPosts = useCallback(() => {
-    if (!userData) return false;
-    if (user.id === userData.id) return true;
-    if (userData.account_type === "public") return true;
-    return followStatus === "accepted";
-  }, [userData, user, followStatus]);
+  };
 
   useEffect(() => {
-    fetchProfileData();
-  }, [fetchProfileData]);
+    if (id) {
+      setFollowStatus(null);
+      fetchUserData();
+    }
+  }, [id]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setFollowStatus(null);
+    fetchUserData();
+  };
+
+  const handleOpenComments = (postId: any) => {
+    commentsSheetRef.current?.present();
+  };
+
+  const shouldShowPosts = () => {
+    if (!userData) return false;
+    if (user && user.id === userData.id) return true;
+    if (userData.account_type === "public") return true;
+    return followStatus === "accepted";
+  };
 
   return {
     userData,
@@ -128,17 +98,12 @@ const useProfileData = () => {
     user,
     activeTab,
     setActiveTab,
-    isFollowing,
     followStatus,
-    followLoading,
-    mutualFollow,
     commentsSheetRef,
-    snapPoints,
-    handleSheetChanges,
-    handleOpenComments,
-    fetchProfileData,
     handleRefresh,
+    handleOpenComments,
     shouldShowPosts,
+    userStats,
   };
 };
 
@@ -151,11 +116,34 @@ export const useProfileActions = (
   user: any,
   followStatus: any
 ) => {
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(
+    followStatus === "accepted" || followStatus === "pending"
+  );
+  const [currentStatus, setCurrentStatus] = useState(followStatus);
   const [followLoading, setFollowLoading] = useState(false);
+
+  useEffect(() => {
+    setIsFollowing(followStatus === "accepted" || followStatus === "pending");
+    setCurrentStatus(followStatus);
+    console.log(
+      "useProfileActions received followStatus update:",
+      followStatus
+    );
+  }, [followStatus]);
 
   const handleFollow = async () => {
     if (!userData || userData.id === user.id) return;
+
+    const wasFollowing = isFollowing;
+    const oldStatus = currentStatus;
+
+    if (!isFollowing) {
+      setIsFollowing(true);
+      setCurrentStatus("pending");
+    } else {
+      setIsFollowing(false);
+      setCurrentStatus(null);
+    }
 
     setFollowLoading(true);
 
@@ -163,14 +151,18 @@ export const useProfileActions = (
       const result = await toggleFollowStatus(
         user.id,
         userData.id,
-        isFollowing
+        wasFollowing
       );
-      setIsFollowing(result.isFollowing);
 
-      // Refresh follower count after follow/unfollow
+      setIsFollowing(result.isFollowing);
+      setCurrentStatus(result.followStatus);
+      console.log("After toggle, new status:", result.followStatus);
+
       await getFollowerCount(userData.id);
     } catch (error) {
       console.error("Error updating follow status:", error);
+      setIsFollowing(wasFollowing);
+      setCurrentStatus(oldStatus);
     } finally {
       setFollowLoading(false);
     }
@@ -180,13 +172,14 @@ export const useProfileActions = (
     if (!userData) return false;
     if (user.id === userData.id) return false;
     if (userData.account_type === "public") return true;
-    return followStatus === "accepted";
-  }, [userData, user, followStatus]);
+    return currentStatus === "accepted";
+  }, [userData, user, currentStatus]);
 
   return {
     isFollowing,
     followLoading,
     handleFollow,
     canMessage,
+    followStatus: currentStatus,
   };
 };

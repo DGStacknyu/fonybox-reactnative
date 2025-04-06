@@ -4,14 +4,14 @@ import { FontAwesome } from "@expo/vector-icons";
 
 export const getRandomColor = () => {
   const colors = [
-    "#F87171", // red-400
-    "#FB923C", // orange-400
-    "#FBBF24", // amber-400
-    "#34D399", // emerald-400
-    "#60A5FA", // blue-400
-    "#818CF8", // indigo-400
-    "#A78BFA", // violet-400
-    "#F472B6", // pink-400
+    "#F87171",
+    "#FB923C",
+    "#FBBF24",
+    "#34D399",
+    "#60A5FA",
+    "#818CF8",
+    "#A78BFA",
+    "#F472B6",
   ];
 
   return colors[Math.floor(Math.random() * colors.length)];

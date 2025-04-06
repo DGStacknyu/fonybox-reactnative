@@ -154,8 +154,10 @@
 // };
 
 // export default Home;
+import { pb } from "@/components/pocketbaseClient";
 import PostCard from "@/components/posts/PostCard";
 import SearchInput from "@/components/SearchInput";
+import { postData } from "@/constants/chats";
 import {
   AntDesign,
   FontAwesome,
@@ -329,7 +331,6 @@ const AudioComment = ({
 
 const UserProfile = () => {
   const [activeTab, setActiveTab] = useState("posts");
-
   // Bottom sheet reference
   const commentsSheetRef = useRef<BottomSheet>(null);
 
@@ -359,37 +360,6 @@ const UserProfile = () => {
     ),
     []
   );
-
-  const postData = [
-    {
-      id: "1",
-      avatar:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNV2dimRVLDjbd9FtA7z4Qz8wJIVQ_UljnUiB6Zd-5TCWz8-5TFzTZf90&s",
-      username: "Ralph Edwards",
-      timeAgo: "2 minutes",
-      caption:
-        "I was working on my bike and one of the part randomly fell, can you suggest me the reason?",
-      imageUrl:
-        "https://images.unsplash.com/photo-1741567348603-0bef4612bea2?q=80&w=2138&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      likes: "50k",
-      shares: "24k",
-      commentCount: 24,
-    },
-    {
-      id: "2",
-      avatar:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSIC58Nd1zNJDZBd_wdQZ3gOUTQLrdSbmlzxv6oelm8bMqr4O_sfTcnBIY&s",
-      username: "Jane Cooper",
-      timeAgo: "15 minutes",
-      caption:
-        "Just finished assembling my new road bike. Any tips for a first-time rider?",
-      imageUrl:
-        "https://images.unsplash.com/photo-1741866987680-5e3d7f052b87?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHx0b3BpYy1mZWVkfDZ8Ym84alFLVGFFMFl8fGVufDB8fHx8fA%3D%3D",
-      likes: "32k",
-      shares: "18k",
-      commentCount: 15,
-    },
-  ];
 
   const currentData = postData;
 

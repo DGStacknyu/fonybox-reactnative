@@ -76,14 +76,28 @@ const ProfileActions = ({
   followStatus,
   isCurrentUser = false,
 }: any) => {
-  const { isFollowing, followLoading, handleFollow, canMessage } = isCurrentUser
+  // Debugging what's coming in as followStatus
+  console.log("Follow status passed to component:", followStatus);
+
+  const {
+    isFollowing,
+    followLoading,
+    handleFollow,
+    canMessage,
+    followStatus: currentFollowStatus,
+  } = isCurrentUser
     ? {
         isFollowing: false,
         followLoading: false,
         handleFollow: () => {},
         canMessage: () => false,
+        followStatus: null,
       }
     : useProfileActions(userData, user, followStatus);
+
+  // Log what we're using after processing
+  console.log("Current follow status in component:", currentFollowStatus);
+  console.log("Is following state:", isFollowing);
 
   if (isCurrentUser || user.id === userData.id) {
     return (
@@ -100,6 +114,13 @@ const ProfileActions = ({
       </View>
     );
   }
+
+  const getButtonText = () => {
+    if (currentFollowStatus === "accepted") return "Following";
+    if (currentFollowStatus === "pending") return "Requested";
+    if (isFollowing && !currentFollowStatus) return "Following";
+    return "Follow";
+  };
 
   return (
     <View className="flex-row gap-5 mt-6">
@@ -130,11 +151,7 @@ const ProfileActions = ({
               isFollowing ? "text-red-500" : "text-white"
             }`}
           >
-            {isFollowing
-              ? followStatus === "accepted"
-                ? "Following"
-                : "Requested"
-              : "Follow"}
+            {getButtonText()}
           </Text>
         )}
       </TouchableOpacity>

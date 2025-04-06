@@ -36,7 +36,6 @@ const RootLayout = () => {
   }
   return (
     <GlobalProvider>
-      <Toast />
       <Stack>
         <Stack.Screen
           name="index"
@@ -95,6 +94,7 @@ const RootLayout = () => {
           options={{ headerShown: false }}
         ></Stack.Screen>
       </Stack>
+      {/* <Toast /> */}
     </GlobalProvider>
   );
 };
