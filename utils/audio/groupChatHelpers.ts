@@ -159,6 +159,7 @@ export const loadGroupData = async (
       isPlaceholder: false,
     };
 
+    // Save basic group info to AsyncStorage for future fast loads
     try {
       const groupInfoKey = `group_info_${id}`;
       const groupInfo = {
@@ -170,10 +171,13 @@ export const loadGroupData = async (
       console.log("Could not save group info to storage:", storageErr);
     }
 
+    // Update UI with quick data
     updateCallback(initialDetails);
 
+    // Store in cache
     groupCache.set(id, initialDetails);
 
+    // Load audio durations in background
     const audioDurations = await preloadAudioDurations(details.messages || []);
 
     // Process messages with durations

@@ -1,20 +1,15 @@
-// File: components/GroupChat/useRecording.ts
 import { useState, useRef, useEffect, RefObject } from "react";
 import { Alert, Platform, ScrollView } from "react-native";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
 import { pb } from "@/components/pocketbaseClient";
-import { pbFileUrl } from "@/lib/getData/GetVideos";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { formatDuration } from "@/utils/audio/audioHelpers";
-import { groupCache } from "@/utils/audio/groupChatHelpers";
 
-// Platform-specific recording implementation
-
-export const useRecording = (
-  groupId: string | Blob,
+export const usePrivateRecording = (
+  chatId: string | Blob,
   userId: string | Blob,
-  setGroupDetails: { (value: any): void; (arg0: (prev: any) => any): void },
+  setChatDetails: { (value: any): void; (arg0: (prev: any) => any): void },
   scrollViewRef: RefObject<ScrollView>
 ) => {
   const [recording, setRecording] = useState(null);
@@ -171,10 +166,9 @@ export const useRecording = (
     }
   };
 
-  // Platform-specific upload implementation
   const uploadAudio = async (fileUri: string, durationSeconds: number) => {
-    if (!groupId || !userId) {
-      Alert.alert("Error", "Missing group ID or user ID");
+    if (!chatId || !userId) {
+      Alert.alert("Error", "Missing chat ID or user ID");
       return;
     }
 
@@ -224,10 +218,9 @@ export const useRecording = (
       const formData = new FormData();
 
       // Explicitly convert to string and cast as any to avoid type issues
-      formData.append("audio_url", fileObject as any);
-      formData.append("group", String(groupId));
+      formData.append("audio_file", fileObject as any);
+      formData.append("chat", String(chatId));
       formData.append("sender", String(userId));
-      formData.append("type", "voice");
       formData.append("metadata", JSON.stringify({ durationSeconds }));
 
       console.log("Preparing to upload form data");
@@ -245,7 +238,7 @@ export const useRecording = (
       }
 
       // Use direct fetch instead of PocketBase client for better control
-      const uploadUrl = `${pb.baseUrl}/api/collections/group_messages/records`;
+      const uploadUrl = `${pb.baseUrl}/api/collections/private_messages/records`;
       console.log("Uploading to:", uploadUrl);
 
       const response = await fetch(uploadUrl, {
@@ -278,7 +271,7 @@ export const useRecording = (
       const newMessage = {
         id: record.id,
         type: "voice",
-        audio_url: pbFileUrl(record.collectionId, record.id, record.audio_url),
+        audio_url: pb.files.getUrl(record, record.audio_file),
         created: record.created,
         isSent: true,
         isPlaying: false,
@@ -291,15 +284,16 @@ export const useRecording = (
           id: userId,
           name: "Me",
         },
+        read: false,
       };
 
-      setGroupDetails((prev: { messages: any }) => {
+      setChatDetails((prev: { messages: any[] }) => {
+        if (!prev) return null;
+
         const updatedDetails = {
           ...prev,
           messages: [...prev.messages, newMessage],
         };
-
-        groupCache.set(groupId, updatedDetails);
 
         return updatedDetails;
       });

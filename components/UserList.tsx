@@ -138,7 +138,7 @@ const UserList = ({
           />
           <View className="ml-3">
             <Text className="font-semibold">
-              {user.name}{" "}
+              {user.name}
               {user.isCurrentUser && (
                 <Text className="text-gray-500">(You)</Text>
               )}

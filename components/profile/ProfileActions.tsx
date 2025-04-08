@@ -69,6 +69,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { useProfileActions } from "@/hooks/userProfileData";
+import { createNewChat, getChatId } from "@/lib/get-chat-data/get-private-chat";
 
 const ProfileActions = ({
   userData,
@@ -76,8 +77,19 @@ const ProfileActions = ({
   followStatus,
   isCurrentUser = false,
 }: any) => {
-  // Debugging what's coming in as followStatus
   console.log("Follow status passed to component:", followStatus);
+
+  const handleMessagePress = async () => {
+    try {
+      let chatId = await getChatId(user.id, userData.id);
+      if (!chatId) {
+        chatId = await createNewChat(user.id, userData.id);
+      }
+      router.push(`/(chat)/${chatId}`);
+    } catch (error) {
+      console.error("Error navigating to chat:", error);
+    }
+  };
 
   const {
     isFollowing,
@@ -95,7 +107,6 @@ const ProfileActions = ({
       }
     : useProfileActions(userData, user, followStatus);
 
-  // Log what we're using after processing
   console.log("Current follow status in component:", currentFollowStatus);
   console.log("Is following state:", isFollowing);
 
@@ -127,7 +138,7 @@ const ProfileActions = ({
       {canMessage() && (
         <TouchableOpacity
           className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
-          onPress={() => router.push(`/(chat)/${userData.id}`)}
+          onPress={handleMessagePress}
         >
           <Text className="text-gray-700 font-semibold">Message</Text>
         </TouchableOpacity>

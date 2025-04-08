@@ -1,6 +1,9 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { Text, View, Alert, Animated, Easing } from "react-native";
+import { useEffect, useState, useRef } from "react";
+import { Audio } from "expo-av";
+import { TouchableOpacity } from "react-native";
 
 import { useGlobalContext } from "@/lib/AuthContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -13,34 +16,263 @@ const TabIcon = ({
   name,
   focused,
   isCenter = false,
-}: {
-  icon?: any; // Make this optional
-  iconName?: any;
-  color: string;
-  name: string;
-  focused: boolean;
-  isCenter?: boolean;
-}) => {
+  onPress,
+  isRecording,
+  recordingDuration,
+}: any) => {
+  const waveAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const timerAnim = useRef(new Animated.Value(0)).current;
+  const [seconds, setSeconds] = useState(0);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (isRecording) {
+      startWaveAnimation();
+      startPulseAnimation();
+      startTimerAnimation();
+    } else {
+      waveAnim.setValue(0);
+      pulseAnim.setValue(0);
+      timerAnim.setValue(0);
+      setSeconds(0);
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    return () => {
+      waveAnim.setValue(0);
+      pulseAnim.setValue(0);
+      timerAnim.setValue(0);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isRecording]);
+
+  const startWaveAnimation = () => {
+    waveAnim.setValue(0);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(waveAnim, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.bezier(0.42, 0, 0.58, 1),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const startPulseAnimation = () => {
+    pulseAnim.setValue(0);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.bezier(0.42, 0, 0.58, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.bezier(0.42, 0, 0.58, 1),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const startTimerAnimation = () => {
+    timerAnim.setValue(0);
+    Animated.loop(
+      Animated.timing(timerAnim, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
   if (isCenter) {
     return (
       <View
-        className="flex items-center justify-center"
-        style={{ marginBottom: 40 }}
+        style={{ alignItems: "center", height: 80, justifyContent: "flex-end" }}
       >
+        {isRecording && (
+          <View
+            style={{
+              backgroundColor: "rgba(255, 90, 95, 0.15)",
+              paddingVertical: 6,
+              paddingHorizontal: 15,
+              borderRadius: 20,
+              marginBottom: 14,
+              borderWidth: 1,
+              borderColor: "rgba(255, 90, 95, 0.3)",
+              flexDirection: "row",
+              alignItems: "center",
+              elevation: 3,
+              shadowColor: "#FF5A5F",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              width: 90,
+            }}
+          >
+            <View
+              style={{
+                height: 8,
+                width: 8,
+                borderRadius: 4,
+                backgroundColor: "#FF5A5F",
+                marginRight: 8,
+              }}
+            />
+            <Text style={{ color: "#FF5A5F", fontWeight: "700", fontSize: 16 }}>
+              {formatTime(recordingDuration || seconds)}
+            </Text>
+          </View>
+        )}
+
         <View
-          className="rounded-full flex items-center justify-center"
           style={{
-            backgroundColor: "#FF5A5F",
-            width: 75,
-            height: 75,
-            elevation: 5,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
+            position: "relative",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <Ionicons name={iconName || "mic"} size={48} color="#FFFFFF" />
+          {/* Wave animation */}
+          {isRecording && (
+            <>
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  width: 160,
+                  height: 160,
+                  borderRadius: 80,
+                  elevation: 8,
+                  backgroundColor: "transparent",
+                  borderWidth: 3,
+                  borderColor: "rgba(255, 90, 95, 0.4)",
+                  zIndex: -1,
+                  opacity: waveAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0.8, 0.5, 0.2],
+                  }),
+                  transform: [
+                    {
+                      scale: waveAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1.8],
+                      }),
+                    },
+                  ],
+                }}
+              />
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  width: 160,
+                  height: 160,
+                  elevation: 8,
+                  borderRadius: 80,
+                  borderWidth: 6,
+                  borderColor: "rgba(255, 90, 95, 0.25)",
+                  zIndex: -1,
+                  opacity: waveAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0.7, 0.4, 0.1],
+                  }),
+                  transform: [
+                    {
+                      scale: waveAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.6, 1.5],
+                      }),
+                    },
+                  ],
+                }}
+              />
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  width: 160,
+                  elevation: 8,
+                  height: 160,
+                  borderRadius: 80,
+                  borderWidth: 10,
+                  borderColor: "rgba(255, 90, 95, 0.15)",
+                  zIndex: -1,
+                  opacity: waveAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0.6, 0.3, 0.1],
+                  }),
+                  transform: [
+                    {
+                      scale: waveAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 2.2],
+                      }),
+                    },
+                  ],
+                }}
+              />
+            </>
+          )}
+
+          {/* Main button */}
+          <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+            <View
+              style={{
+                marginBottom: 40,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: "#FF5A5F",
+                  elevation: 8,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4.65,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {isRecording ? (
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 4,
+                      backgroundColor: "#FFFFFF",
+                    }}
+                  />
+                ) : (
+                  <Ionicons name="mic" size={44} color="#FFFFFF" />
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -48,22 +280,136 @@ const TabIcon = ({
 
   return (
     <View
-      className="flex items-center justify-center"
-      style={{ width: 70, marginBottom: -20 }}
+      style={{
+        width: 70,
+        height: 80,
+        alignItems: "center",
+        justifyContent: "flex-end",
+      }}
     >
       <Ionicons name={iconName || "help-circle"} size={32} color={color} />
-
-      {/* {focused && (
-        <Text className="text-xs font-pregular" style={{ color: color }}>
-          {name}
-        </Text>
-      )} */}
     </View>
   );
 };
-
+// Main component
 const TabLayout = () => {
   const { loading, isLogged } = useGlobalContext();
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingPermission, setRecordingPermission] = useState(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const timerRef = useRef(null);
+  const startTimeRef = useRef(null);
+
+  // Request permissions on component mount
+  useEffect(() => {
+    const getPermissions = async () => {
+      const { status } = await Audio.requestPermissionsAsync();
+      setRecordingPermission(status === "granted");
+    };
+
+    getPermissions();
+  }, []);
+
+  useEffect(() => {
+    if (isRecording) {
+      startTimeRef.current = Date.now() - recordingDuration * 1000;
+      timerRef.current = setInterval(() => {
+        const secondsElapsed = Math.floor(
+          (Date.now() - startTimeRef.current) / 1000
+        );
+        setRecordingDuration(secondsElapsed);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (!isRecording) {
+        setRecordingDuration(0);
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isRecording]);
+
+  const handleCenterTabPress = async () => {
+    if (isRecording) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      if (recordingPermission !== true) {
+        Alert.alert(
+          "Permission required",
+          "Please grant microphone permissions to record audio."
+        );
+        return;
+      }
+
+      global.audioUri = null;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      console.log("Starting recording...");
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+      startTimeRef.current = Date.now();
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      Alert.alert("Error", "Failed to start recording. Please try again.");
+    }
+  };
+
+  // Stop recording
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    try {
+      console.log("Stopping recording...");
+      await recording.stopAndUnloadAsync();
+
+      const uri = recording.getURI();
+      console.log("Recording saved to:", uri);
+
+      setRecording(null);
+      setIsRecording(false);
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      router.push({
+        pathname: "/create",
+        params: { audioUri: uri },
+      });
+    } catch (error) {
+      console.error("Failed to stop recording:", error);
+      Alert.alert("Error", "Failed to stop recording. Please try again.");
+      setRecording(null);
+      setIsRecording(false);
+    }
+  };
 
   if (!loading && !isLogged) return <Redirect href="/sign-in" />;
 
@@ -133,10 +479,20 @@ const TabLayout = () => {
                 name="Voice"
                 focused={focused}
                 isCenter={true}
+                onPress={handleCenterTabPress}
+                isRecording={isRecording}
+                recordingDuration={recordingDuration}
               />
             ),
+            listeners: () => ({
+              tabPress: (e: { preventDefault: () => void }) => {
+                if (!isRecording) {
+                  e.preventDefault();
+                }
+              },
+            }),
           }}
-        />{" "}
+        />
         <Tabs.Screen
           name="GroupChat"
           options={{

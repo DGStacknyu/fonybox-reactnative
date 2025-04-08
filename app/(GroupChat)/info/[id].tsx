@@ -199,7 +199,7 @@ const GroupInfoScreen = () => {
             if (currentUserMember) {
               await pb.collection("group_members").delete(currentUserMember.id);
             }
-            router.replace("/(GroupChat)");
+            router.push("/GroupChat");
           } catch (err) {
             console.error("Error leaving group:", err);
             Alert.alert("Error", "Failed to leave group");
@@ -334,18 +334,18 @@ const GroupInfoScreen = () => {
                 <Ionicons name="people" size={14} color="#666" />
                 <Text className="text-sm text-gray-500 ml-1">
                   {groupChat.group_type.charAt(0).toUpperCase() +
-                    groupChat.group_type.slice(1)}{" "}
+                    groupChat.group_type.slice(1)}
                   Group
                 </Text>
               </View>
-              {groupChat.location && (
+              {/* {groupChat.location && (
                 <View className="flex-row items-center mt-1">
                   <Ionicons name="location" size={14} color="#666" />
                   <Text className="text-sm text-gray-500 ml-1">
                     {groupChat.location}
                   </Text>
                 </View>
-              )}
+              )} */}
               {isAdmin && (
                 <TouchableOpacity
                   className="mt-4 flex-row items-center"

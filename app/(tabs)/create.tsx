@@ -1,43 +1,43 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useGlobalContext } from "@/lib/AuthContext";
+import { createPost } from "@/lib/get-post-data/post-fucntions";
+import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
+import * as ImagePicker from "expo-image-picker";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  Animated,
-  Platform,
   ActivityIndicator,
   Alert,
+  Image,
   Keyboard,
-  TouchableWithoutFeedback,
+  Platform,
   SafeAreaView,
+  ScrollView,
   StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 
 const Create = () => {
+  const params = useLocalSearchParams();
+  const { user } = useGlobalContext();
   // States
-  const [recording, setRecording] = useState(null);
-  const [recordingStatus, setRecordingStatus] = useState("idle");
-  const [audioUri, setAudioUri] = useState(null);
+  const [audioUri, setAudioUri] = useState(params.audioUri || null);
   const [caption, setCaption] = useState("");
   const [image, setImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [recordingPermission, setRecordingPermission] = useState(null);
 
-  // Animation values
-  const waveAnim = useRef(new Animated.Value(0)).current;
+  const [sound, setSound] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Request permissions on component mount
   useEffect(() => {
     const getPermissions = async () => {
-      const { status } = await Audio.requestPermissionsAsync();
-      setRecordingPermission(status === "granted");
-
       if (Platform.OS !== "web") {
         const imageResult =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -51,193 +51,130 @@ const Create = () => {
     };
 
     getPermissions();
-  }, []);
 
-  // Create separate animation values for native and JS-driven animations
-  const pulseAnim = useRef(new Animated.Value(1)).current; // Native
-  const wave1Anim = useRef(new Animated.Value(0)).current; // Native
-  const wave2Anim = useRef(new Animated.Value(0)).current; // Native
-  const wave3Anim = useRef(new Animated.Value(0)).current; // Native
-
-  // JS-only animations (for color interpolation)
-  const colorAnim1 = useRef(new Animated.Value(0)).current;
-  const colorAnim2 = useRef(new Animated.Value(0)).current;
-  const colorAnim3 = useRef(new Animated.Value(0)).current;
-
-  // Recording time tracker
-  const [recordingDuration, setRecordingDuration] = useState(0);
-
-  // Set up enhanced animations
-  useEffect(() => {
-    if (recordingStatus === "recording") {
-      // Native-driven animations for scaling and opacity
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.3,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-
-      // Wave animations using native driver
-      Animated.loop(
-        Animated.timing(wave1Anim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        })
-      ).start();
-
+    if (audioUri) {
+      console.log("Loading audio from URI:", audioUri);
       setTimeout(() => {
-        Animated.loop(
-          Animated.timing(wave2Anim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          })
-        ).start();
-      }, 200);
-
-      setTimeout(() => {
-        Animated.loop(
-          Animated.timing(wave3Anim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          })
-        ).start();
-      }, 400);
-
-      // JS animations for color changes (separate from native animations)
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(colorAnim1, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: false,
-          }),
-          Animated.timing(colorAnim1, {
-            toValue: 0,
-            duration: 1000,
-            useNativeDriver: false,
-          }),
-        ])
-      ).start();
-
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(colorAnim2, {
-            toValue: 1,
-            duration: 1300,
-            useNativeDriver: false,
-          }),
-          Animated.timing(colorAnim2, {
-            toValue: 0,
-            duration: 1300,
-            useNativeDriver: false,
-          }),
-        ])
-      ).start();
-
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(colorAnim3, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: false,
-          }),
-          Animated.timing(colorAnim3, {
-            toValue: 0,
-            duration: 800,
-            useNativeDriver: false,
-          }),
-        ])
-      ).start();
-
-      // Timer for duration
-      const interval = setInterval(() => {
-        setRecordingDuration((prevDuration) => prevDuration + 1);
-      }, 1000);
-
-      return () => clearInterval(interval);
-    } else {
-      // Reset animations when not recording
-      pulseAnim.setValue(1);
-      wave1Anim.setValue(0);
-      wave2Anim.setValue(0);
-      wave3Anim.setValue(0);
-      colorAnim1.setValue(0);
-      colorAnim2.setValue(0);
-      colorAnim3.setValue(0);
-      setRecordingDuration(0);
+        loadAudio();
+      }, 500);
     }
-  }, [recordingStatus]);
 
-  // Format seconds to mm:ss
+    return () => {
+      if (sound) {
+        console.log("Unloading sound");
+        sound.unloadAsync();
+      }
+    };
+  }, [audioUri]);
+
+  useEffect(() => {
+    if (audioUri) {
+      console.log("Audio URI available:", audioUri);
+    } else {
+      console.log("No audio URI available");
+    }
+  }, [audioUri]);
+
   const formatTime = (seconds: number) => {
+    if (!seconds) return "00:00";
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, "0")}:${secs
       .toString()
       .padStart(2, "0")}`;
   };
 
-  // Start recording function
-  const startRecording = async () => {
+  const loadAudio = async () => {
     try {
-      if (recordingPermission !== true) {
-        Alert.alert(
-          "Permission required",
-          "Please grant microphone permissions to record audio."
-        );
-        return;
-      }
-
-      // Configure audio session
+      setIsLoading(true);
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
+        allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
 
-      // Create and start recording
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioUri },
+        {
+          shouldPlay: false,
+          volume: 1.0,
+          rate: 1.0,
+          progressUpdateIntervalMillis: 100,
+        },
+        onPlaybackStatusUpdate
       );
 
-      setRecording(recording);
-      setRecordingStatus("recording");
+      setSound(newSound);
+      setIsLoading(false);
+
+      await newSound.setPositionAsync(0);
+
+      console.log("Audio loaded successfully:", audioUri);
     } catch (error) {
-      console.error("Failed to start recording:", error);
-      Alert.alert("Error", "Failed to start recording. Please try again.");
+      console.error("Error loading audio:", error);
+      Alert.alert("Error", "Failed to load audio. Please try again.");
+      setIsLoading(false);
     }
   };
 
-  // Stop recording function
-  const stopRecording = async () => {
-    if (!recording) return;
+  const onPlaybackStatusUpdate = (status: {
+    isLoaded: any;
+    durationMillis: number;
+    positionMillis: number;
+    isPlaying: boolean | ((prevState: boolean) => boolean);
+    didJustFinish: any;
+  }) => {
+    if (status.isLoaded) {
+      setDuration(status.durationMillis / 1000);
+      setPosition(status.positionMillis / 1000);
+      setIsPlaying(status.isPlaying);
+
+      if (status.didJustFinish) {
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const handlePlayPause = async () => {
+    if (!sound) {
+      console.log("No sound object available");
+      if (audioUri) {
+        await loadAudio();
+        return;
+      }
+      return;
+    }
 
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setAudioUri(uri);
-      setRecording(null);
-      setRecordingStatus("stopped");
+      if (isPlaying) {
+        console.log("Pausing audio");
+        await sound.pauseAsync();
+      } else {
+        console.log("Playing audio");
+
+        const status = await sound.getStatusAsync();
+        if (status.positionMillis === status.durationMillis) {
+          await sound.setPositionAsync(0);
+        }
+
+        await sound.setVolumeAsync(1.0);
+        await sound.playAsync();
+      }
     } catch (error) {
-      console.error("Failed to stop recording:", error);
-      Alert.alert("Error", "Failed to stop recording. Please try again.");
+      console.error("Error handling play/pause:", error);
+      Alert.alert(
+        "Playback Error",
+        "There was a problem playing the audio. Please try again."
+      );
+
+      if (audioUri) {
+        loadAudio();
+      }
     }
   };
 
-  // Handle image picking
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -257,16 +194,15 @@ const Create = () => {
       Alert.alert("No recording", "Please record some audio first.");
       return;
     }
-
     setIsUploading(true);
-
     try {
-      // Simulate API upload delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await createPost({
+        audioUri,
+        userId: user.id,
+        caption,
+        imageUri: image,
+      });
 
-      // In a real app, you would upload to your backend here
-
-      // Reset form after successful upload
       Alert.alert(
         "Success",
         "Your voice message has been uploaded successfully!",
@@ -275,8 +211,7 @@ const Create = () => {
             text: "OK",
             onPress: () => {
               resetForm();
-              // Navigate back or to another screen if needed
-              // router.replace("/");
+              router.replace("/");
             },
           },
         ]
@@ -291,18 +226,33 @@ const Create = () => {
       setIsUploading(false);
     }
   };
-
-  // Reset everything
   const resetForm = () => {
-    if (recording) {
-      recording.stopAndUnloadAsync();
+    if (sound) {
+      try {
+        sound
+          .stopAsync()
+          .then(() => {
+            sound.unloadAsync();
+            console.log("Sound stopped and unloaded successfully");
+          })
+          .catch((err: any) => console.error("Error cleaning up sound:", err));
+      } catch (e) {
+        console.error("Error in resetForm:", e);
+      }
     }
-    setRecording(null);
+
+    // Clear all state
+    setSound(null);
     setAudioUri(null);
     setCaption("");
     setImage(null);
-    setRecordingStatus("idle");
-    setRecordingDuration(0);
+    setPosition(0);
+    setDuration(0);
+    setIsPlaying(false);
+
+    global.audioUri = null;
+
+    console.log("Form reset complete");
   };
 
   return (
@@ -322,285 +272,267 @@ const Create = () => {
       </View>
 
       <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-        <View className="flex-1 p-4">
-          {/* Recording UI */}
-          <View className="flex-1 items-center justify-center">
-            {/* Enhanced audio visualization */}
-            <View className="relative w-80 h-80 items-center justify-center mb-8">
-              {recordingStatus === "recording" && (
-                <>
-                  {/* Multiple staggered sound waves for rich animation */}
-                  {/* Outer wave */}
-                  <Animated.View
-                    className="absolute rounded-full bg-[#FFE8E9]"
-                    style={{
-                      width: 190,
-                      height: 190,
-                      opacity: wave1Anim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0.4, 0.2, 0.4],
-                      }),
-                      transform: [
-                        {
-                          scale: wave1Anim.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [1, 1.6, 1],
-                          }),
-                        },
-                      ],
-                    }}
-                  />
-
-                  {/* Middle wave */}
-                  <Animated.View
-                    className="absolute rounded-full bg-[#FFCFD1]"
-                    style={{
-                      width: 150,
-                      height: 150,
-                      opacity: wave2Anim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0.5, 0.3, 0.5],
-                      }),
-                      transform: [
-                        {
-                          scale: wave2Anim.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [1, 1.4, 1],
-                          }),
-                        },
-                      ],
-                    }}
-                  />
-
-                  {/* Inner wave */}
-                  <Animated.View
-                    className="absolute rounded-full bg-[#FFB6BB]"
-                    style={{
-                      width: 110,
-                      height: 110,
-                      opacity: wave3Anim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0.6, 0.4, 0.6],
-                      }),
-                      transform: [
-                        {
-                          scale: wave3Anim.interpolate({
-                            inputRange: [0, 0.5, 1],
-                            outputRange: [1, 1.25, 1],
-                          }),
-                        },
-                      ],
-                    }}
-                  />
-                </>
-              )}
-
-              {/* Enhanced mic button with shadow */}
-              <View
-                style={
-                  recordingStatus === "recording"
-                    ? {
-                        shadowColor: "#F52936",
-                        shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 15,
-                        elevation: 10,
-                      }
-                    : {}
-                }
-              >
-                <TouchableOpacity
-                  className="bg-[#F52936] w-24 h-24 rounded-full items-center justify-center shadow-lg"
-                  onPress={
-                    recordingStatus === "recording"
-                      ? stopRecording
-                      : startRecording
-                  }
-                  disabled={isUploading}
-                  style={
-                    recordingStatus === "recording"
-                      ? {
-                          borderWidth: 3,
-                          borderColor: "rgba(255, 255, 255, 0.4)",
-                        }
-                      : {}
-                  }
-                >
-                  <Animated.View
-                    style={{
-                      transform: [{ scale: pulseAnim }],
-                    }}
-                  >
-                    <Ionicons
-                      name={recordingStatus === "recording" ? "stop" : "mic"}
-                      size={45}
-                      color="white"
-                    />
-                  </Animated.View>
-                </TouchableOpacity>
-              </View>
-
-              {/* Enhanced recording time display */}
-              {recordingStatus === "recording" && (
-                <View className="mt-6 px-5 py-2 rounded-full bg-[#FFE8E9]">
-                  <Animated.Text
-                    className="text-[#F52936] text-xl font-bold"
-                    style={{
-                      transform: [
-                        {
-                          scale: pulseAnim.interpolate({
-                            inputRange: [1, 1.3],
-                            outputRange: [1, 1.05],
-                          }),
-                        },
-                      ],
-                    }}
-                  >
-                    {formatTime(recordingDuration)}
-                  </Animated.Text>
-                </View>
-              )}
-
-              {/* Enhanced recording status with simple styling */}
-              {recordingStatus === "recording" ? (
-                <View className="flex-row items-center mt-4">
-                  <View className="w-2 h-2 rounded-full bg-[#F52936] mr-2" />
-                  <Text className="text-gray-700 text-base font-medium">
-                    Recording in progress
-                  </Text>
-                </View>
-              ) : (
-                <Text className="text-gray-600 text-base mt-4">
-                  {recordingStatus === "idle" && "Tap mic to start recording"}
-                  {recordingStatus === "stopped" && "Recording complete"}
-                </Text>
-              )}
-
-              {/* Audio recorded indicator */}
-              {audioUri && recordingStatus === "stopped" && (
-                <View className="mt-3 flex-row items-center px-4 py-2 rounded-lg bg-[#FFE8E9]">
-                  <Ionicons name="checkmark-circle" size={20} color="#F52936" />
-                  <Text className="text-[#F52936] ml-2 font-medium">
-                    Audio recorded successfully
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Caption input */}
-            <View className="w-full px-4 mb-4">
-              <Text className="text-gray-700 mb-1 font-medium">Caption</Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg p-3 bg-white"
-                placeholder="Add a caption for your recording..."
-                value={caption}
-                onChangeText={setCaption}
-                multiline
-                numberOfLines={3}
-                disabled={isUploading}
-                returnKeyType="done"
-                blurOnSubmit={true}
-                onSubmitEditing={() => Keyboard.dismiss()}
-              />
-            </View>
-
-            {/* Image upload */}
-            <View className="w-full px-4 mb-6">
-              <Text className="text-gray-700 mb-1 font-medium">
-                Image (optional)
+        <ScrollView className="flex-1 p-4">
+          {audioUri ? (
+            <View className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
+              <Text className="text-gray-700 font-medium mb-3">
+                Your Recording
               </Text>
 
-              {image ? (
-                <View className="relative mb-2">
-                  <Image
-                    source={{ uri: image }}
-                    className="w-full h-40 rounded-lg"
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    className="absolute top-2 right-2 bg-[#F52936] w-8 h-8 rounded-full items-center justify-center"
-                    onPress={() => setImage(null)}
-                    disabled={isUploading}
-                  >
-                    <Ionicons name="close" size={20} color="white" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
+              <View className="flex-row items-center">
                 <TouchableOpacity
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 items-center bg-white"
-                  onPress={pickImage}
-                  disabled={isUploading}
+                  className="bg-[#F52936] w-14 h-14 rounded-full items-center justify-center mr-4"
+                  onPress={handlePlayPause}
+                  disabled={isLoading}
+                  style={{
+                    elevation: 4,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                  }}
                 >
-                  <Ionicons name="image-outline" size={30} color="#637381" />
-                  <Text className="text-gray-500 mt-2">
-                    Tap to select an image
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Action buttons (simplified) */}
-            <View
-              className="w-full px-4 flex-row justify-between mt-auto mb-32"
-              style={{
-                paddingBottom: Platform.select({ ios: 30, android: 30 }),
-              }}
-            >
-              <TouchableOpacity
-                className="bg-gray-100 px-6 py-3.5 rounded-xl flex-row items-center shadow-sm"
-                style={{
-                  borderWidth: 1,
-                  borderColor: "rgba(200, 200, 200, 0.3)",
-                }}
-                onPress={resetForm}
-                disabled={
-                  isUploading || (recordingStatus === "idle" && !audioUri)
-                }
-              >
-                <Ionicons name="refresh" size={20} color="#637381" />
-                <Text className="text-gray-700 ml-2 font-medium">Reset</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className={`px-6 py-3.5 rounded-xl flex-row items-center  ${
-                  audioUri && !isUploading ? "bg-[#F52936]" : "bg-gray-300"
-                }`}
-                style={
-                  audioUri && !isUploading
-                    ? {
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 10,
-                        elevation: 6,
-                      }
-                    : {}
-                }
-                onPress={uploadVoiceMessage}
-                disabled={isUploading || !audioUri}
-              >
-                {isUploading ? (
-                  <View className="flex-row items-center">
+                  {isLoading ? (
                     <ActivityIndicator color="white" size="small" />
-                    <Text className="text-white ml-3 font-medium">
-                      Uploading...
-                    </Text>
-                  </View>
-                ) : (
-                  <>
+                  ) : (
                     <Ionicons
-                      name="cloud-upload-outline"
-                      size={20}
+                      name={isPlaying ? "pause" : "play"}
+                      size={28}
                       color="white"
                     />
-                    <Text className="text-white ml-2 font-medium">
-                      Create Post
+                  )}
+                </TouchableOpacity>
+
+                <View className="flex-1">
+                  <View className="flex-row justify-between">
+                    <Text className="text-gray-800 font-medium">
+                      {formatTime(position)}
                     </Text>
-                  </>
-                )}
+                    <Text className="text-gray-500">
+                      {formatTime(duration)}
+                    </Text>
+                  </View>
+
+                  <View className="h-3 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                    <View
+                      className="h-3 bg-[#F52936]"
+                      style={{
+                        width: `${
+                          duration > 0 ? (position / duration) * 100 : 0
+                        }%`,
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View className="flex-row items-center justify-center mt-2">
+                <View
+                  className={`w-2 h-2 rounded-full ${
+                    isPlaying ? "bg-[#F52936]" : "bg-gray-400"
+                  } mr-2`}
+                />
+                <Text className="text-gray-700">
+                  {isLoading
+                    ? "Loading audio..."
+                    : isPlaying
+                    ? "Playing"
+                    : duration > 0
+                    ? "Paused"
+                    : "Audio ready to play"}
+                </Text>
+              </View>
+
+              <View className="flex-row justify-end mt-2">
+                <TouchableOpacity
+                  className="flex-row items-center"
+                  onPress={() => {
+                    Alert.alert(
+                      "Record Again",
+                      "Are you sure you want to discard this recording and record again?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Yes",
+                          onPress: () => {
+                            if (sound) {
+                              sound
+                                .stopAsync()
+                                .then(() => {
+                                  sound.unloadAsync();
+                                  setSound(null);
+                                })
+                                .catch((err: any) =>
+                                  console.error("Error stopping sound:", err)
+                                );
+                            }
+                            global.audioUri = null;
+                            resetForm();
+                            router.replace("/");
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <Ionicons name="refresh" size={16} color="#637381" />
+                  <Text className="text-gray-600 ml-1 text-sm">
+                    Record Again
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View className="bg-gray-100 rounded-xl p-4 mb-6 items-center">
+              <Text className="text-gray-700">No recording found</Text>
+              <TouchableOpacity
+                className="bg-[#F52936] px-4 py-2 rounded-lg mt-2"
+                onPress={() => router.replace("/")}
+              >
+                <Text className="text-white">Record Audio</Text>
               </TouchableOpacity>
             </View>
+          )}
+
+          <View className="w-full mb-4">
+            <Text className="text-gray-700 mb-1 font-medium">Caption</Text>
+            <TextInput
+              className="border border-gray-300 rounded-lg p-3 bg-white"
+              placeholder="Add a caption for your recording..."
+              value={caption}
+              onChangeText={setCaption}
+              multiline
+              numberOfLines={3}
+              disabled={isUploading}
+              returnKeyType="done"
+              blurOnSubmit={true}
+              onSubmitEditing={() => Keyboard.dismiss()}
+            />
           </View>
-        </View>
+
+          <View className="w-full mb-6">
+            <Text className="text-gray-700 mb-1 font-medium">
+              Image (optional)
+            </Text>
+
+            {image ? (
+              <View className="relative mb-2">
+                <Image
+                  source={{ uri: image }}
+                  className="w-full h-40 rounded-lg"
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  className="absolute top-2 right-2 bg-[#F52936] w-8 h-8 rounded-full items-center justify-center"
+                  onPress={() => setImage(null)}
+                  disabled={isUploading}
+                >
+                  <Ionicons name="close" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                className="border-2 border-dashed border-gray-300 rounded-lg p-4 items-center bg-white"
+                onPress={pickImage}
+                disabled={isUploading}
+              >
+                <Ionicons name="image-outline" size={30} color="#637381" />
+                <Text className="text-gray-500 mt-2">
+                  Tap to select an image
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View
+            className="w-full flex-row justify-between mt-4 mb-32"
+            style={{
+              paddingBottom: Platform.select({ ios: 30, android: 30 }),
+            }}
+          >
+            <TouchableOpacity
+              className="bg-gray-100 px-6 py-3.5 rounded-xl flex-row items-center shadow-sm"
+              style={{
+                borderWidth: 1,
+                borderColor: "rgba(200, 200, 200, 0.3)",
+              }}
+              onPress={() => {
+                if (audioUri) {
+                  Alert.alert(
+                    "Cancel Recording",
+                    "Are you sure you want to discard this recording?",
+                    [
+                      { text: "No", style: "cancel" },
+                      {
+                        text: "Yes",
+                        onPress: () => {
+                          if (sound) {
+                            sound
+                              .stopAsync()
+                              .then(() => {
+                                sound.unloadAsync();
+                                setSound(null);
+                              })
+                              .catch((err: any) =>
+                                console.error("Error stopping sound:", err)
+                              );
+                          }
+                          setAudioUri(null);
+                          global.audioUri = null;
+                          router.back();
+                        },
+                      },
+                    ]
+                  );
+                } else {
+                  router.back();
+                }
+              }}
+              disabled={isUploading}
+            >
+              <Ionicons name="arrow-back" size={20} color="#637381" />
+              <Text className="text-gray-700 ml-2 font-medium">Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className={`px-6 py-3.5 rounded-xl flex-row items-center ${
+                audioUri && !isUploading ? "bg-[#F52936]" : "bg-gray-300"
+              }`}
+              style={
+                audioUri && !isUploading
+                  ? {
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 10,
+                      elevation: 6,
+                    }
+                  : {}
+              }
+              onPress={uploadVoiceMessage}
+              disabled={isUploading || !audioUri}
+            >
+              {isUploading ? (
+                <View className="flex-row items-center">
+                  <ActivityIndicator color="white" size="small" />
+                  <Text className="text-white ml-3 font-medium">
+                    Uploading...
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={20}
+                    color="white"
+                  />
+                  <Text className="text-white ml-2 font-medium">
+                    Create Post
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );

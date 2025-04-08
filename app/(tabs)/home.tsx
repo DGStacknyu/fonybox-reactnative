@@ -158,6 +158,8 @@ import { pb } from "@/components/pocketbaseClient";
 import PostCard from "@/components/posts/PostCard";
 import SearchInput from "@/components/SearchInput";
 import { postData } from "@/constants/chats";
+import { useGlobalContext } from "@/lib/AuthContext";
+import { getPosts } from "@/lib/get-post-data/post-fucntions";
 import {
   AntDesign,
   FontAwesome,
@@ -170,8 +172,15 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { BottomSheetDefaultBackdropProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types";
 import { router } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Platform,
@@ -330,24 +339,67 @@ const AudioComment = ({
 };
 
 const UserProfile = () => {
+  const { user } = useGlobalContext();
   const [activeTab, setActiveTab] = useState("posts");
-  // Bottom sheet reference
   const commentsSheetRef = useRef<BottomSheet>(null);
-
-  // Variables for configurable snap points
   const snapPoints = useMemo(() => ["75%", "100%"], []);
 
-  // Callbacks for sheet events
-  const handleSheetChanges = useCallback((index: any) => {
-    console.log("handleSheetChanges", index);
-  }, []);
-
-  // Open the sheet to the first snap point (50%)
+  // State for posts and loading
+  const [posts, setPosts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const handleOpenComments = useCallback(() => {
     commentsSheetRef.current?.snapToIndex(0);
   }, []);
 
-  // Render backdrop component
+  const loadPosts = async (pageNum = 1, refresh = false) => {
+    try {
+      if (refresh) {
+        setIsLoading(true);
+      }
+
+      const postsData = await getPosts({
+        page: pageNum,
+        perPage: 10,
+        // Add any filters you want here, e.g.:
+        // userId: activeTab === "my" ? user.id : null,
+      });
+
+      if (refresh || pageNum === 1) {
+        setPosts(postsData.items);
+      } else {
+        setPosts((prev) => [...prev, ...postsData.items]);
+      }
+
+      // Check if there are more posts to load
+      setHasMore(postsData.totalPages > pageNum);
+      setPage(pageNum);
+    } catch (error) {
+      console.error("Error loading posts:", error);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
+  useEffect(() => {
+    loadPosts();
+  }, []);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadPosts(1, true);
+  };
+  const handleLoadMore = () => {
+    if (!isLoading && hasMore) {
+      loadPosts(page + 1);
+    }
+  };
+
+  const handleSheetChanges = useCallback((index: any) => {
+    console.log("handleSheetChanges", index);
+  }, []);
+
   const renderBackdrop = useCallback(
     (
       props: React.JSX.IntrinsicAttributes & BottomSheetDefaultBackdropProps
@@ -361,14 +413,11 @@ const UserProfile = () => {
     []
   );
 
-  const currentData = postData;
-
   const renderPostItem = ({ item }: any) => (
     <View className="px-5">
       <PostCard post={item} onOpenComments={handleOpenComments} />
     </View>
   );
-
   return (
     <GestureHandlerRootView>
       <SafeAreaView
@@ -377,7 +426,7 @@ const UserProfile = () => {
       >
         <View className="bg-white">
           <FlatList
-            data={currentData}
+            data={posts}
             renderItem={renderPostItem}
             keyExtractor={(item) => item.id}
             ListHeaderComponent={() => (
@@ -439,6 +488,26 @@ const UserProfile = () => {
                 android: 70,
               }),
             }}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            ListFooterComponent={
+              isLoading && !refreshing ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#F52936"
+                  style={{ marginVertical: 20 }}
+                />
+              ) : null
+            }
+            ListEmptyComponent={
+              !isLoading ? (
+                <View className="flex items-center justify-center py-20">
+                  <Text className="text-gray-500">No posts found</Text>
+                </View>
+              ) : null
+            }
           />
 
           <BottomSheet

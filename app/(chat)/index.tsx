@@ -1,126 +1,154 @@
 import { ChatListHeader } from "@/components/chats/MainChat/ChatListHeader";
 import { ChatListSearch } from "@/components/chats/MainChat/ChatListSearch";
 import { ConversationItem } from "@/components/chats/MainChat/ConversationItem";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { FlatList, SafeAreaView, StatusBar } from "react-native";
-
-const SAMPLE_CONVERSATIONS = [
-  {
-    id: "1",
-    user: {
-      name: "Hossein Azarbad",
-      avatar: null,
-      initial: "H",
-      color: "#F0D3F7",
-      hasStory: true,
-      status: "Online",
-    },
-    lastMessage: {
-      type: "voice",
-      duration: "0:15",
-      timestamp: "Just now",
-    },
-    unread: true,
-    messageCount: 15,
-  },
-  {
-    id: "2",
-    user: {
-      name: "Marvin McKinney",
-      avatar: null,
-      initial: "M",
-      color: "#EEEEEE",
-      hasStory: false,
-      status: "Online",
-    },
-    lastMessage: {
-      type: "voice",
-      duration: "0:31",
-      timestamp: "2 mins",
-    },
-    unread: false,
-    messageCount: 3,
-  },
-  {
-    id: "3",
-    user: {
-      name: "Sarah Johnson",
-      avatar: null,
-      initial: "S",
-      color: "#E3F5FF",
-      hasStory: true,
-      status: "Last seen 2h ago",
-    },
-    lastMessage: {
-      type: "voice",
-      duration: "1:05",
-      timestamp: "Yesterday",
-    },
-    unread: true,
-    messageCount: 4,
-  },
-  {
-    id: "4",
-    user: {
-      name: "Alex Chen",
-      avatar: null,
-      initial: "A",
-      color: "#FFE8CC",
-      hasStory: false,
-      status: "Last seen 1d ago",
-    },
-    lastMessage: {
-      type: "voice",
-      duration: "0:55",
-      timestamp: "Monday",
-    },
-    unread: false,
-    messageCount: 3,
-  },
-  {
-    id: "5",
-    user: {
-      name: "Emily Rodriguez",
-      avatar: null,
-      initial: "E",
-      color: "#E0FFE0",
-      hasStory: true,
-      status: "Online",
-    },
-    lastMessage: {
-      type: "voice",
-      duration: "1:12",
-      timestamp: "8:52 AM",
-    },
-    unread: true,
-    messageCount: 5,
-  },
-  {
-    id: "6",
-    user: {
-      name: "David Kim",
-      avatar: null,
-      initial: "D",
-      color: "#D3E5FF",
-      hasStory: false,
-      status: "Last seen just now",
-    },
-    lastMessage: {
-      type: "voice",
-      duration: "0:33",
-      timestamp: "11:15 AM",
-    },
-    unread: false,
-    messageCount: 4,
-  },
-];
+import { pb } from "@/components/pocketbaseClient";
+import { useGlobalContext } from "@/lib/AuthContext";
+import { getUserChats } from "@/lib/get-chat-data/get-private-chat";
+import { getColorFromId } from "@/utils/audio/groupChatHelpers";
+import { formatDistanceToNow } from "date-fns";
+import { router } from "expo-router";
+import { RecordModel } from "pocketbase";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  StatusBar,
+  Text,
+  View,
+} from "react-native";
 
 const ChatListScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const router = useRouter();
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { user } = useGlobalContext();
 
-  const filteredConversations = SAMPLE_CONVERSATIONS.filter((conversation) =>
+  const formatChatData = async (chatData: RecordModel[]) => {
+    const formattedChats = [];
+
+    for (const chat of chatData) {
+      try {
+        const otherUserId = chat.user1 === user.id ? chat.user2 : chat.user1;
+
+        const otherUser = await pb.collection("users").getOne(otherUserId);
+
+        const messages = await pb.collection("private_messages").getList(1, 1, {
+          filter: `chat="${chat.id}"`,
+          sort: "-created",
+        });
+
+        if (messages.items.length === 0) continue;
+
+        const lastMessage = messages.items[0];
+
+        const unreadCount = await pb
+          .collection("private_messages")
+          .getList(1, 100, {
+            filter: `chat="${chat.id}" && sender!="${user.id}" && read=false`,
+            countOnly: true,
+          });
+
+        let timestamp;
+        try {
+          const messageDate = new Date(lastMessage.created);
+          timestamp = formatDistanceToNow(messageDate, { addSuffix: true });
+
+          timestamp = timestamp
+            .replace("about ", "")
+            .replace("less than ", "")
+            .replace(" ago", "");
+
+          if (timestamp.includes("minute")) {
+            if (timestamp.startsWith("1 ")) {
+              timestamp = "1 min";
+            } else {
+              timestamp = timestamp.replace(" minutes", " mins");
+            }
+          }
+        } catch (error) {
+          timestamp = "Unknown";
+        }
+
+        formattedChats.push({
+          id: chat.id,
+          user: {
+            id: otherUser.id,
+            name: otherUser.name || "User",
+            avatar: otherUser.avatar
+              ? pb.files.getUrl(otherUser, otherUser.avatar)
+              : null,
+            initial: (otherUser.name || "U")[0].toUpperCase(),
+            color: otherUser.color || getColorFromId(otherUserId),
+            hasStory: false,
+            status: otherUser.status || "Offline",
+          },
+          lastMessage: {
+            type: lastMessage.audio_file ? "voice" : "text",
+            content: lastMessage.content || "",
+            duration: lastMessage.metadata?.durationSeconds
+              ? `${Math.floor(lastMessage.metadata.durationSeconds / 60)}:${(
+                  lastMessage.metadata.durationSeconds % 60
+                )
+                  .toString()
+                  .padStart(2, "0")}`
+              : "0:00",
+            timestamp: timestamp,
+          },
+          unread: unreadCount.totalItems > 0,
+          messageCount: unreadCount.totalItems,
+        });
+      } catch (error) {
+        console.error("Error formatting chat:", error);
+      }
+    }
+
+    return formattedChats;
+  };
+
+  const loadChats = useCallback(async () => {
+    if (!user || !user.id) return;
+
+    try {
+      setLoading(true);
+
+      const { success, chats, error } = await getUserChats(user.id);
+
+      if (success && chats) {
+        const formattedChats = await formatChatData(chats);
+        setConversations(formattedChats);
+      } else {
+        console.error("Failed to load chats:", error);
+      }
+    } catch (error) {
+      console.error("Error loading chats:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadChats();
+
+    const messagesSubscription = pb
+      .collection("private_messages")
+      .subscribe("*", function () {
+        loadChats();
+      });
+
+    return () => {
+      pb.collection("private_messages").unsubscribe();
+    };
+  }, [loadChats]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadChats();
+  }, [loadChats]);
+
+  const filteredConversations = conversations.filter((conversation) =>
     conversation.user.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -144,7 +172,22 @@ const ChatListScreen = () => {
             onPress={handleConversationPress}
           />
         )}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={
+          <View className="flex-1 items-center justify-center p-8">
+            <Text className="text-gray-500 text-center">
+              {loading
+                ? "Loading chats..."
+                : "No conversations yet. Start a new chat to begin messaging."}
+            </Text>
+          </View>
+        }
+        contentContainerStyle={{
+          paddingBottom: 20,
+          flexGrow: filteredConversations.length === 0 ? 1 : undefined,
+        }}
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>

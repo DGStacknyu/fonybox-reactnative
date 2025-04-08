@@ -60,7 +60,7 @@ const RootLayout = () => {
         <Stack.Screen
           name="notifications"
           options={{ headerShown: false }}
-        ></Stack.Screen>{" "}
+        ></Stack.Screen>
         <Stack.Screen
           name="interest"
           options={{ headerShown: false }}
@@ -68,7 +68,7 @@ const RootLayout = () => {
         <Stack.Screen
           name="user-details"
           options={{ headerShown: false }}
-        ></Stack.Screen>{" "}
+        ></Stack.Screen>
         <Stack.Screen
           name="(GroupChat)"
           options={{ headerShown: false }}

@@ -56,7 +56,7 @@ const UserProfile = () => {
         userStats={userStats}
         loading={loading}
         isCurrentUser={true}
-      />{" "}
+      />
       <ProfileActions
         userData={user}
         user={user}

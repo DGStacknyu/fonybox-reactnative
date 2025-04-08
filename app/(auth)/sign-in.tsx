@@ -239,7 +239,7 @@ const LoginScreen = () => {
               href="/sign-up"
               className="text-base font-pmedium text-gray-500"
             >
-              Forgot password?{" "}
+              Forgot password?
             </Link>
           </View>
           <CustomButton
