@@ -4,7 +4,7 @@ import { createGroup } from "@/components/chats/GroupChat/GroupUtils";
 import SelectMembers from "@/components/chats/GroupChat/SelectMembers";
 import { pb } from "@/components/pocketbaseClient";
 import { Contact, getRandomColor } from "@/hooks/useContacts";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState, useEffect } from "react";

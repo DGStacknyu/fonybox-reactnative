@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocalSearchParams } from "expo-router";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { pb } from "@/components/pocketbaseClient";
 import {
   getFollowerCount,
@@ -80,7 +80,7 @@ const useProfileData = () => {
   };
 
   const handleOpenComments = (postId: any) => {
-    commentsSheetRef.current?.present();
+    commentsSheetRef.current?.snapToIndex(0);
   };
 
   const shouldShowPosts = () => {

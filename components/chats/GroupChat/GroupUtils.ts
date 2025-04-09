@@ -3,22 +3,6 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { Alert } from "react-native";
 
-export const getRandomColor = () => {
-  const colors = [
-    "#F0D3F7",
-    "#EEEEEE",
-    "#E3F5FF",
-    "#FFE8CC",
-    "#E0FFE0",
-    "#D3E5FF",
-    "#FFECDA",
-    "#E5E5FF",
-    "#FFE8E8",
-    "#D9F2D9",
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
-
 // Image picker function
 export const pickImage = async (): Promise<string | null> => {
   try {

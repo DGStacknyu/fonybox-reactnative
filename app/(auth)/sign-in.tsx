@@ -116,7 +116,7 @@ import CustomButton from "@/components/CustomButton";
 import FormField from "@/components/FormField";
 import { pb } from "@/components/pocketbaseClient";
 import { images } from "@/constants";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import {

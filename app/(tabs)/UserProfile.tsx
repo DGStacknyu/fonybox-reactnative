@@ -1,22 +1,23 @@
-import React, { useCallback, useState } from "react";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, Platform, Text, TouchableOpacity, View } from "react-native";
 import {
   GestureHandlerRootView,
   RefreshControl,
 } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
 
+import CommentsBottomSheet from "@/components/common/CommentsBottomSheet";
 import PostCard from "@/components/posts/PostCard";
+import ProfileActions from "@/components/profile/ProfileActions";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
-import ProfileActions from "@/components/profile/ProfileActions";
 import ProfileTabs from "@/components/profile/ProfileTabs";
-import CommentsBottomSheet from "@/components/common/CommentsBottomSheet";
 
-import { postData, savedData } from "@/constants/chats";
 import useCurrentUserProfile from "@/hooks/useCurrentUserProfile";
+import { getPosts, getSavedPosts } from "@/lib/get-post-data/post-fucntions";
+import { RecordModel } from "pocketbase";
 
 const UserProfile = () => {
   const {
@@ -31,21 +32,127 @@ const UserProfile = () => {
     refreshUserProfile,
     followStatus,
   } = useCurrentUserProfile();
+  useEffect(() => {
+    if (user === null) {
+      router.replace("/login");
+    }
+  }, [user]);
 
-  const currentData = activeTab === "posts" ? postData : savedData;
   const [refreshing, setRefreshing] = useState(false);
+  const [userPosts, setUserPosts] = useState<RecordModel[]>([]);
+  const [savedPosts, setSavedPosts] = useState<RecordModel[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const perPage = 20;
+
+  const fetchUserPosts = async () => {
+    if (!user?.id) return;
+
+    setPostsLoading(true);
+    try {
+      const postsData = await getPosts({
+        page,
+        perPage,
+        userId: user.id,
+        filter: `user="${user.id}"`,
+      });
+      setUserPosts(postsData.items || []);
+    } catch (error) {
+      console.error("Error fetching user posts:", error);
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const fetchSavedPosts = async () => {
+    if (!user?.id) return;
+
+    setSavedLoading(true);
+    try {
+      const savedPostsData = await getSavedPosts(user.id, page, perPage);
+      setSavedPosts(savedPostsData.items || []);
+    } catch (error) {
+      console.error("Error fetching saved posts:", error);
+    } finally {
+      setSavedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserPosts();
+      fetchSavedPosts();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (activeTab === "posts") {
+      fetchUserPosts();
+    } else if (activeTab === "saved") {
+      fetchSavedPosts();
+    }
+  }, [activeTab]);
+
+  const handlePostUpdated = useCallback(() => {
+    if (activeTab === "posts") {
+      fetchUserPosts();
+    } else if (activeTab === "saved") {
+      fetchSavedPosts();
+    }
+  }, [activeTab]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await refreshUserProfile();
+      if (activeTab === "posts") {
+        await fetchUserPosts();
+      } else if (activeTab === "saved") {
+        await fetchSavedPosts();
+      }
     } catch (error) {
       console.error("Error refreshing profile:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshUserProfile]);
+  }, [refreshUserProfile, activeTab]);
+
+  const currentData = activeTab === "posts" ? userPosts : savedPosts;
+  const isLoading = activeTab === "posts" ? postsLoading : savedLoading;
+
+  const renderEmptyState = () => {
+    if (isLoading) {
+      return null;
+    }
+
+    if (activeTab === "posts") {
+      return (
+        <View className="flex-1 justify-center items-center py-10">
+          <Text className="text-gray-600 text-lg mb-2">No posts yet</Text>
+          <Text className="text-gray-500 text-base mb-6 text-center px-8">
+            Create your first post by pressing the voice button below
+          </Text>
+        </View>
+      );
+    } else {
+      return (
+        <View className="flex-1 justify-center items-center py-10">
+          <Text className="text-gray-600 text-lg mb-2">No saved posts yet</Text>
+          <Text className="text-gray-500 text-base text-center px-8">
+            When you save posts, they'll appear here
+          </Text>
+        </View>
+      );
+    }
+  };
+
   const renderPostItem = ({ item }: any) => (
-    <PostCard post={item} onOpenComments={handleOpenComments} />
+    <PostCard
+      post={item}
+      onOpenComments={handleOpenComments}
+      onPostUpdated={handlePostUpdated}
+    />
   );
 
   const renderHeader = () => (
@@ -85,11 +192,13 @@ const UserProfile = () => {
               <MaterialCommunityIcons name="logout" size={24} color="black" />
             </TouchableOpacity>
           </View>
+
           <FlatList
             data={currentData}
             renderItem={renderPostItem}
             keyExtractor={(item) => item.id}
             ListHeaderComponent={renderHeader}
+            ListEmptyComponent={renderEmptyState}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -100,6 +209,7 @@ const UserProfile = () => {
               />
             }
             contentContainerStyle={{
+              flexGrow: 1,
               paddingBottom: Platform.select({
                 ios: 50,
                 android: 70,

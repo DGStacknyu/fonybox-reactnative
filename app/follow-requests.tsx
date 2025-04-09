@@ -1,7 +1,7 @@
 import { ChatListHeader } from "@/components/chats/MainChat/ChatListHeader";
 import { pb } from "@/components/pocketbaseClient";
 import { getInitials } from "@/components/ProfileAvatar";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { pbFileUrl } from "@/lib/getData/GetVideos";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";

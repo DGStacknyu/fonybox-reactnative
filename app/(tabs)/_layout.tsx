@@ -1,11 +1,11 @@
 import { Redirect, Tabs, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Text, View, Alert, Animated, Easing } from "react-native";
+import { Text, View, Alert, Animated, Easing, Platform } from "react-native";
 import { useEffect, useState, useRef } from "react";
 import { Audio } from "expo-av";
 import { TouchableOpacity } from "react-native";
-
-import { useGlobalContext } from "@/lib/AuthContext";
+import * as FileSystem from "expo-file-system";
+import { useGlobalContext } from "@/context/AuthContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { icons } from "../../constants";
 
@@ -291,7 +291,6 @@ const TabIcon = ({
     </View>
   );
 };
-// Main component
 const TabLayout = () => {
   const { loading, isLogged } = useGlobalContext();
   const [recording, setRecording] = useState(null);
@@ -379,19 +378,13 @@ const TabLayout = () => {
   };
 
   // Stop recording
+
   const stopRecording = async () => {
     if (!recording) return;
 
     try {
       console.log("Stopping recording...");
       await recording.stopAndUnloadAsync();
-
-      const uri = recording.getURI();
-      console.log("Recording saved to:", uri);
-
-      setRecording(null);
-      setIsRecording(false);
-
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -399,13 +392,65 @@ const TabLayout = () => {
         playThroughEarpieceAndroid: false,
       });
 
+      const uri = recording.getURI();
+      console.log("Recording saved to:", uri);
+
+      // Decode the URI properly
+      const decodedUri = decodeURIComponent(uri);
+      console.log("Decoded URI:", decodedUri);
+
+      // Check if file exists and is accessible
+      let fileExists = false;
+      let retries = 0;
+      const maxRetries = 5;
+
+      while (!fileExists && retries < maxRetries) {
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(decodedUri);
+          fileExists = fileInfo.exists;
+
+          if (!fileExists) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            retries++;
+          }
+        } catch (error) {
+          console.log(`File check attempt ${retries + 1} failed:`, error);
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          retries++;
+        }
+      }
+
+      if (!fileExists) {
+        throw new Error("Audio file not accessible after recording");
+      }
+
+      // For Android, create a copy in a more reliable location
+      let finalUri = decodedUri;
+      if (Platform.OS === "android") {
+        try {
+          const fileName = decodedUri.split("/").pop();
+          const newUri = `${FileSystem.cacheDirectory}${fileName}`;
+          await FileSystem.copyAsync({
+            from: decodedUri,
+            to: newUri,
+          });
+          finalUri = newUri;
+          console.log("File copied to:", finalUri);
+        } catch (copyError) {
+          console.warn("Failed to copy file, using original:", copyError);
+        }
+      }
+
+      setRecording(null);
+      setIsRecording(false);
+
       router.push({
         pathname: "/create",
-        params: { audioUri: uri },
+        params: { audioUri: finalUri },
       });
     } catch (error) {
       console.error("Failed to stop recording:", error);
-      Alert.alert("Error", "Failed to stop recording. Please try again.");
+      Alert.alert("Error", "Failed to save recording. Please try again.");
       setRecording(null);
       setIsRecording(false);
     }
@@ -424,7 +469,7 @@ const TabLayout = () => {
             backgroundColor: "#FFFFFF",
             borderTopWidth: 1,
             borderTopColor: "#F0F0F0",
-            height: 80,
+            height: 90,
             paddingHorizontal: 0,
             borderTopLeftRadius: 0,
             borderTopRightRadius: 0,

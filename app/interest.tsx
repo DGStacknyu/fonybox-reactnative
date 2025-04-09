@@ -204,7 +204,7 @@ const Interest = () => {
               selectedTags.length > 0 ? "bg-red-500" : "bg-red-300"
             }`}
             disabled={selectedTags.length === 0}
-            onPress={() => router.push("/home")}
+            onPress={() => router.push("/storytelling")}
           >
             <Text className="text-white text-lg font-medium">Next</Text>
           </TouchableOpacity>

@@ -1,9 +1,8 @@
+import GlobalProvider from "@/context/AuthContext";
 import "@/global.css";
-import GlobalProvider from "@/lib/AuthContext";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
 import { useEffect } from "react";
-import Toast from "react-native-toast-message";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -91,6 +90,10 @@ const RootLayout = () => {
         ></Stack.Screen>
         <Stack.Screen
           name="(stats)/following/[id]"
+          options={{ headerShown: false }}
+        ></Stack.Screen>
+        <Stack.Screen
+          name="storytelling"
           options={{ headerShown: false }}
         ></Stack.Screen>
       </Stack>

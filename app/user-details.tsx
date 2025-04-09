@@ -1,23 +1,23 @@
-import { useState } from "react";
-import {
-  SafeAreaView,
-  ScrollView,
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  Modal,
-  FlatList,
-  Platform,
-} from "react-native";
-import { images } from "../constants";
-import FormField from "@/components/FormField";
-import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import CustomButton from "@/components/CustomButton";
+import FormField from "@/components/FormField";
+import { pb } from "@/components/pocketbaseClient";
+import { useGlobalContext } from "@/context/AuthContext";
+import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useGlobalContext } from "@/lib/AuthContext";
-import { pb } from "@/components/pocketbaseClient";
+import { useState } from "react";
+import {
+  FlatList,
+  Image,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { images } from "../constants";
 
 const UserDetailsForm = () => {
   const { user, setUser } = useGlobalContext();
@@ -47,35 +47,46 @@ const UserDetailsForm = () => {
     setShowDatePicker(Platform.OS === "ios");
     setDate(currentDate);
 
-    // Format as YYYY-MM-DD for PocketBase
     const formattedDate = formatDateForPocketBase(currentDate);
     setForm({ ...form, date_of_birth: formattedDate });
   };
 
-  // Helper function to ensure consistent date formatting for PocketBase
   const formatDateForPocketBase = (dateObj: Date) => {
     return `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1)
       .toString()
       .padStart(2, "0")}-${dateObj.getDate().toString().padStart(2, "0")}`;
   };
 
-  // Helper function to format date for display
-  const formatDateForDisplay = (isoDateString: string) => {
+  const formatDateForDisplay = (isoDateString: string | number | Date) => {
     if (!isoDateString) return "";
 
     try {
-      const parts = isoDateString.includes("-")
-        ? isoDateString.split("-")
-        : isoDateString.split("/");
-
-      if (parts.length !== 3) return isoDateString;
+      if (isoDateString.includes("T") || isoDateString.includes("Z")) {
+        const date = new Date(isoDateString);
+        return `${(date.getMonth() + 1).toString().padStart(2, "0")}/${date
+          .getDate()
+          .toString()
+          .padStart(2, "0")}/${date.getFullYear()}`;
+      }
 
       if (isoDateString.includes("/")) {
+        if (isoDateString.includes("00:00:00")) {
+          const parts = isoDateString.split(" ")[0].split("/");
+          if (parts.length >= 2) {
+            return `${parts[0]}/${parts[1]}/${
+              parts[2] || new Date().getFullYear()
+            }`;
+          }
+        }
         return isoDateString;
       }
 
-      const [year, month, day] = parts;
-      return `${month}/${day}/${year}`;
+      if (isoDateString.includes("-")) {
+        const [year, month, day] = isoDateString.split("-");
+        return `${month}/${day}/${year}`;
+      }
+
+      return isoDateString;
     } catch (error) {
       console.error("Error formatting date:", error);
       return isoDateString;
@@ -491,7 +502,7 @@ const UserDetailsForm = () => {
                 }
               >
                 {form.date_of_birth
-                  ? formatDateForDisplay(form.date_of_birth)
+                  ? String(formatDateForDisplay(form.date_of_birth))
                   : "Select your date of birth"}
               </Text>
               <MaterialIcons

@@ -1,7 +1,7 @@
 import FormField from "@/components/FormField";
 import LocationPicker from "@/components/LocationPicker";
 import ProfileAvatar from "@/components/ProfileAvatar"; // Import the new component
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { pbFileUrl } from "@/lib/getData/GetVideos";
 import {
   Ionicons,

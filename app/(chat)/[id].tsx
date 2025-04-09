@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { pb } from "@/components/pocketbaseClient";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { RecordingButton } from "@/components/chats/GroupChat/RecordingButton";
 import { RecordModel } from "pocketbase";

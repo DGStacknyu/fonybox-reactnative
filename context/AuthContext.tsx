@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import PocketBase from "pocketbase";
 import { pb } from "@/components/pocketbaseClient";
+import { router } from "expo-router";
 
 type AuthModel = any | null;
 
@@ -20,6 +21,7 @@ interface GlobalContextType {
   login: (email: string, password: string) => Promise<any>;
   logout: () => void;
   updateUserProfile: (updatedProfile: any) => Promise<any>;
+  checkUserProfileCompletion: () => boolean;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -41,11 +43,25 @@ const GlobalProvider: React.FC<GlobalProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthModel>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const checkUserProfileCompletion = (): boolean => {
+    if (!user) return false;
+
+    return !!user.username && user.username.trim() !== "";
+  };
+
+  const redirectIfProfileIncomplete = () => {
+    if (isLogged && !loading && !checkUserProfileCompletion()) {
+      console.log("Username missing, redirecting to user details");
+      router.navigate("/user-details");
+    } else {
+      router.navigate("/home");
+    }
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
       try {
-        // First check if we have a valid token in the auth store
         if (pb.authStore.isValid) {
           try {
             // Try to refresh the auth
@@ -75,7 +91,6 @@ const GlobalProvider: React.FC<GlobalProviderProps> = ({ children }) => {
 
     initAuth();
 
-    // Set up auth state change listener
     const unsubscribe = pb.authStore.onChange((token, model) => {
       console.log("Auth state changed:", {
         hasToken: !!token,
@@ -85,14 +100,12 @@ const GlobalProvider: React.FC<GlobalProviderProps> = ({ children }) => {
       setUser(model);
     });
 
-    // Debug logging when component mounts
     console.log("Initial auth state:", {
       isValid: pb.authStore.isValid,
       hasToken: !!pb.authStore.token,
       hasModel: !!pb.authStore.model,
     });
 
-    // Cleanup listener on unmount
     return () => {
       if (typeof unsubscribe === "function") {
         unsubscribe();
@@ -100,10 +113,13 @@ const GlobalProvider: React.FC<GlobalProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Debug logging when auth state changes
   useEffect(() => {
     console.log("Auth state updated:", { isLogged, hasUser: !!user });
-  }, [isLogged, user]);
+
+    if (!loading) {
+      redirectIfProfileIncomplete();
+    }
+  }, [isLogged, user, loading]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -111,6 +127,11 @@ const GlobalProvider: React.FC<GlobalProviderProps> = ({ children }) => {
         .collection("users")
         .authWithPassword(email, password);
       console.log("Login successful");
+
+      if (!authData.record.username || authData.record.username.trim() === "") {
+        console.log("Username missing after login, will redirect");
+      }
+
       return authData;
     } catch (error) {
       console.error("Login failed:", error);
@@ -164,6 +185,7 @@ const GlobalProvider: React.FC<GlobalProviderProps> = ({ children }) => {
         login,
         logout,
         updateUserProfile,
+        checkUserProfileCompletion,
       }}
     >
       {children}

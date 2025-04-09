@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, SafeAreaView } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { RecordModel } from "pocketbase";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { getFollowersList, toggleFollowStatus } from "@/lib/FollowStatus";
 import UserList from "@/components/UserList";
 

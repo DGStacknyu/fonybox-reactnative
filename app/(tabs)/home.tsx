@@ -1,165 +1,8 @@
-// import EmptyState from "@/components/EmptyState";
-// import SearchInput from "@/components/SearchInput";
-// import Trending from "@/components/Trending";
-// import VideoCard from "@/components/VideoCard";
-// import { images } from "@/constants";
-// import {
-//   getVideos,
-//   getTrendingVideos,
-//   pbFileUrl,
-// } from "@/lib/getData/GetVideos";
-// import { AntDesign, Ionicons } from "@expo/vector-icons";
-// import { router } from "expo-router";
-// import { RecordModel } from "pocketbase";
-// import { useState, useEffect } from "react";
-// import {
-//   FlatList,
-//   Image,
-//   RefreshControl,
-//   Text,
-//   View,
-//   ActivityIndicator,
-//   Button,
-//   TouchableOpacity,
-// } from "react-native";
-// import { SafeAreaView } from "react-native-safe-area-context";
-
-// const Home = () => {
-//   const [refreshing, setRefreshing] = useState(false);
-//   const [videos, setVideos] = useState<RecordModel[]>([]);
-//   const [trending, setTrending] = useState<RecordModel[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState("");
-
-//   const fetchData = async () => {
-//     try {
-//       setLoading(true);
-
-//       const fetchedVideos = await getVideos();
-//       setVideos(fetchedVideos);
-
-//       const fetchedTrending = await getTrendingVideos();
-//       setTrending(fetchedTrending);
-//     } catch (err) {
-//       setError("Failed to load videos");
-//       console.error("Error in fetchData:", err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchData();
-//   }, []);
-
-//   const onRefresh = async () => {
-//     setRefreshing(true);
-//     await fetchData();
-//     setRefreshing(false);
-//   };
-
-//   if (loading && videos.length === 0) {
-//     return (
-//       <SafeAreaView className="bg-primary h-screen flex items-center justify-center">
-//         <ActivityIndicator size="large" color="#ffffff" />
-//         <Text className="text-white mt-4">Loading videos...</Text>
-//       </SafeAreaView>
-//     );
-//   }
-
-//   return (
-//     <SafeAreaView className="bg-primary h-screen">
-//       {error ? (
-//         <View className="flex items-center justify-center h-full">
-//           <Text className="text-white text-lg">{error}</Text>
-//           <Text className="text-white mt-2 px-4 text-center">
-//             There was a problem connecting to the database. Pull down to
-//             refresh.
-//           </Text>
-//         </View>
-//       ) : (
-//         <FlatList
-//           data={videos}
-//           keyExtractor={(item) => item.id}
-//           renderItem={({ item }) => (
-//             <VideoCard
-//               title={item.title}
-//               thumbnail={pbFileUrl(item.collectionId, item.id, item.thumbnail)}
-//               video={pbFileUrl(item.collectionId, item.id, item.video)}
-//               creator={item.creator || "Unknown Creator"}
-//               avatar={
-//                 item.expand?.user?.avatar
-//                   ? pbFileUrl(
-//                       "users",
-//                       item.expand.user.id,
-//                       item.expand.user.avatar
-//                     )
-//                   : ""
-//               }
-//               prompt={item.prompt}
-//             />
-//           )}
-//           ListHeaderComponent={() => (
-//             <View className="flex my-6 px-4 space-y-6">
-//               <View className="flex justify-between items-start flex-row mb-6">
-//                 <View>
-//                   <Text className="font-pmedium text-sm text-gray-100">
-//                     Welcome Back
-//                   </Text>
-//                   <Text className="text-2xl font-psemibold text-white">
-//                     JSMastery
-//                   </Text>
-//                 </View>
-//                 <TouchableOpacity
-//                   onPress={() => router.push("/(chat)")}
-//                   className="mt-1.5"
-//                 >
-//                   {/* <Image
-//                     source={images.logoSmall}
-//                     className="w-9 h-10"
-//                     resizeMode="contain"
-//                   /> */}
-//                   <Ionicons
-//                     name="chatbubble-ellipses"
-//                     size={32}
-//                     color="white"
-//                   />
-//                 </TouchableOpacity>
-//               </View>
-
-//               <SearchInput />
-
-//               <View className="w-full flex-1 pt-5 pb-8">
-//                 <Text className="text-lg font-pregular text-gray-100 mb-3">
-//                   Latest Videos
-//                 </Text>
-
-//                 <Trending posts={trending} />
-//               </View>
-//             </View>
-//           )}
-//           ListEmptyComponent={() => (
-//             <EmptyState
-//               title="No Videos Found"
-//               subtitle="No videos created yet"
-//             />
-//           )}
-//           refreshControl={
-//             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-//           }
-//         />
-//       )}
-//     </SafeAreaView>
-//   );
-// };
-
-// export default Home;
-import { pb } from "@/components/pocketbaseClient";
 import PostCard from "@/components/posts/PostCard";
 import SearchInput from "@/components/SearchInput";
-import { postData } from "@/constants/chats";
-import { useGlobalContext } from "@/lib/AuthContext";
-import { getPosts } from "@/lib/get-post-data/post-fucntions";
+import { useGlobalContext } from "@/context/AuthContext";
+import { formatTimeAgo, getPosts } from "@/lib/get-post-data/post-fucntions";
+import { pbFileUrl } from "@/lib/getData/GetVideos";
 import {
   AntDesign,
   FontAwesome,
@@ -191,7 +34,6 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Audio comment mock data
 const AUDIO_COMMENTS = [
   {
     id: "1",
@@ -338,14 +180,27 @@ const AudioComment = ({
   );
 };
 
-const UserProfile = () => {
+const Home = () => {
   const { user } = useGlobalContext();
-  const [activeTab, setActiveTab] = useState("posts");
   const commentsSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ["75%", "100%"], []);
 
-  // State for posts and loading
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<
+    {
+      imageUrl: string | null;
+      audioUrl: string | null;
+      avatar: string;
+      username: any;
+      timeAgo: string;
+      likes: any;
+      shares: number;
+      collectionId: string;
+      collectionName: string;
+      expand?: { [key: string]: any };
+      id: string;
+      userId: string;
+    }[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -362,20 +217,47 @@ const UserProfile = () => {
 
       const postsData = await getPosts({
         page: pageNum,
-        perPage: 10,
-        // Add any filters you want here, e.g.:
-        // userId: activeTab === "my" ? user.id : null,
+        perPage: 15,
+        userId: user?.id,
       });
 
+      const filteredPosts = postsData.items.filter(
+        (post) => post.user !== user?.id
+      );
+
+      const processedPosts = filteredPosts.map((post) => ({
+        ...post,
+        userId: post.userId || "",
+        isLiked: post.isLiked || false,
+        isSaved: post.isSaved || false,
+        likes: post.likes || 0,
+        shares: post.shares || 0,
+        imageUrl: post.imageUrl || null,
+        audioUrl: post.audioUrl || null,
+        avatar: post.expand?.user?.avatar
+          ? pbFileUrl("users", post.expand.user.id, post.expand.user.avatar)
+          : "https://via.placeholder.com/100",
+        username: post.expand?.user?.name || "Unknown User",
+        timeAgo: formatTimeAgo(new Date(post.created)),
+      }));
+
       if (refresh || pageNum === 1) {
-        setPosts(postsData.items);
+        setPosts(processedPosts);
       } else {
-        setPosts((prev) => [...prev, ...postsData.items]);
+        setPosts((prev) => [...prev, ...processedPosts]);
       }
 
-      // Check if there are more posts to load
-      setHasMore(postsData.totalPages > pageNum);
-      setPage(pageNum);
+      const shouldLoadMore =
+        filteredPosts.length < 5 && hasMore && pageNum < postsData.totalPages;
+
+      if (shouldLoadMore) {
+        setTimeout(() => {
+          loadPosts(pageNum + 1, false);
+        }, 300);
+      } else {
+        setHasMore(postsData.totalPages > pageNum);
+        setPage(pageNum);
+      }
     } catch (error) {
       console.error("Error loading posts:", error);
     } finally {
@@ -383,13 +265,16 @@ const UserProfile = () => {
       setRefreshing(false);
     }
   };
+
   useEffect(() => {
     loadPosts();
   }, []);
+
   const handleRefresh = () => {
     setRefreshing(true);
     loadPosts(1, true);
   };
+
   const handleLoadMore = () => {
     if (!isLoading && hasMore) {
       loadPosts(page + 1);
@@ -413,17 +298,37 @@ const UserProfile = () => {
     []
   );
 
+  const handlePostUpdated = useCallback(() => {
+    loadPosts(1, true);
+  }, []);
+
   const renderPostItem = ({ item }: any) => (
     <View className="px-5">
-      <PostCard post={item} onOpenComments={handleOpenComments} />
+      <PostCard
+        post={{
+          ...item,
+          id: item.id,
+          avatar: item.avatar,
+          username: item.username,
+          timeAgo: item.timeAgo,
+          caption: item.caption,
+          imageUrl: item.imageUrl,
+          audioUrl: item.audioUrl,
+          duration: item.duration,
+          likes: item.likes,
+          shares: item.shares,
+          isLiked: item.isLiked,
+          isSaved: item.isSaved,
+        }}
+        onOpenComments={handleOpenComments}
+        onPostUpdated={handlePostUpdated}
+      />
     </View>
   );
+
   return (
     <GestureHandlerRootView>
-      <SafeAreaView
-        edges={["top", "right", "left", "bottom"]}
-        style={{ flex: 1 }}
-      >
+      <SafeAreaView style={{ flex: 1 }}>
         <View className="bg-white">
           <FlatList
             data={posts}
@@ -439,8 +344,8 @@ const UserProfile = () => {
                   </View>
                   <View className="flex-row items-center gap-4">
                     <TouchableOpacity
-                      // onPress={() => router.push("/user-details")}
                       onPress={() => router.push("/notifications")}
+                      // onPress={() => router.push("/storytelling")}
                     >
                       <View className="relative">
                         <Ionicons
@@ -463,7 +368,7 @@ const UserProfile = () => {
                   </View>
                 </View>
                 <View className="flex-row px-3 mt-4">
-                  <TouchableOpacity>
+                  <TouchableOpacity onPress={() => router.push("/profile")}>
                     <View className="bg-gray-50 rounded-full h-12 w-12 items-center justify-center p-2">
                       <FontAwesome5 name="user-alt" size={25} color="gray" />
                     </View>
@@ -504,7 +409,12 @@ const UserProfile = () => {
             ListEmptyComponent={
               !isLoading ? (
                 <View className="flex items-center justify-center py-20">
-                  <Text className="text-gray-500">No posts found</Text>
+                  <Text className="text-gray-500">
+                    No posts from other users found
+                  </Text>
+                  <Text className="text-gray-400 mt-2 text-center px-10">
+                    Follow more users to see their posts in your feed
+                  </Text>
                 </View>
               ) : null
             }
@@ -532,7 +442,6 @@ const UserProfile = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Audio comments list */}
             <BottomSheetScrollView
               contentContainerStyle={{
                 paddingHorizontal: 15,
@@ -548,8 +457,7 @@ const UserProfile = () => {
               ))}
             </BottomSheetScrollView>
 
-            {/* Audio recording input */}
-            <View className="absolute bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-200 flex-row items-center">
+            <View className="absolute bottom-10 left-0 right-0 p-3 bg-white border-t border-gray-200 flex-row items-center">
               <Image
                 source={{ uri: "https://via.placeholder.com/100" }}
                 className="w-8 h-8 rounded-full mr-3 bg-gray-200"
@@ -568,4 +476,4 @@ const UserProfile = () => {
   );
 };
 
-export default UserProfile;
+export default Home;

@@ -1,21 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Image, Text, TouchableOpacity } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
-
-export const getRandomColor = () => {
-  const colors = [
-    "#F87171",
-    "#FB923C",
-    "#FBBF24",
-    "#34D399",
-    "#60A5FA",
-    "#818CF8",
-    "#A78BFA",
-    "#F472B6",
-  ];
-
-  return colors[Math.floor(Math.random() * colors.length)];
-};
+import { getRandomColor } from "@/hooks/useContacts";
 
 export const getInitials = (name: string): string => {
   if (!name || typeof name !== "string") return "?";

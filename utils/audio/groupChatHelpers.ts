@@ -4,7 +4,6 @@ import { getGroupChatDetails } from "@/lib/get-chat-data/get-group-chat";
 import { pbFileUrl } from "@/lib/getData/GetVideos";
 import { preloadAudioDurations } from "./audioHelpers";
 
-// Cache to store loaded group data
 export const groupCache = new Map();
 
 export const getColorFromId = (id: string): string => {
@@ -76,19 +75,16 @@ export const processMessages = (
 
 export const preloadGroups = async (userId: any) => {
   try {
-    // Fetch list of user's groups
     const userGroups = await pb.collection("group_members").getList(1, 20, {
       filter: `user="${userId}"`,
       expand: "group",
     });
 
-    // Create placeholder entries for each group
     userGroups.items.forEach((membership) => {
       if (membership.expand?.group) {
         const group = membership.expand.group;
         const groupId = group.id;
 
-        // Only create placeholder if not already in cache
         if (!groupCache.has(groupId)) {
           const placeholder = getPlaceholderGroup(
             groupId,
@@ -158,8 +154,6 @@ export const loadGroupData = async (
       messages: quickProcessedMessages,
       isPlaceholder: false,
     };
-
-    // Save basic group info to AsyncStorage for future fast loads
     try {
       const groupInfoKey = `group_info_${id}`;
       const groupInfo = {
@@ -170,17 +164,9 @@ export const loadGroupData = async (
     } catch (storageErr) {
       console.log("Could not save group info to storage:", storageErr);
     }
-
-    // Update UI with quick data
     updateCallback(initialDetails);
-
-    // Store in cache
     groupCache.set(id, initialDetails);
-
-    // Load audio durations in background
     const audioDurations = await preloadAudioDurations(details.messages || []);
-
-    // Process messages with durations
     const messagesWithDurations = processMessages(
       details.messages || [],
       userId,

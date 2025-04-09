@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
   Platform,
+  PermissionsAndroid,
 } from "react-native";
 import { Audio } from "expo-av";
 
@@ -18,23 +19,20 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
   const [intervalId, setIntervalId] = useState(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const [soundLoaded, setSoundLoaded] = useState(false);
+  const [displayDuration, setDisplayDuration] = useState("0:00");
+  const [totalDurationSeconds, setTotalDurationSeconds] = useState(0);
   const isMounted = useRef(true);
 
-  // iOS-specific workaround for audio URL
-  const getAudioUrl = () => {
-    if (!message.audio_url) return null;
-
-    // For iOS, ensure the URL uses https for remote URLs
-    if (Platform.OS === "ios" && message.audio_url.startsWith("http:")) {
-      return message.audio_url.replace("http:", "https:");
+  // Safely parse duration string or get it from the sound object
+  const durationToSeconds = (durationStr: string) => {
+    if (!durationStr) return 0;
+    try {
+      const parts = durationStr.split(":").map(Number);
+      return parts[0] * 60 + (parts[1] || 0);
+    } catch (error) {
+      console.warn("Error parsing duration string:", error);
+      return 0;
     }
-
-    return message.audio_url;
-  };
-
-  const durationToSeconds = (duration: string) => {
-    const parts = duration?.split(":")?.map(Number);
-    return parts?.[0] * 60 + (parts?.[1] || 0);
   };
 
   const formatTime = (seconds: number) => {
@@ -43,22 +41,67 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
     return `${mins}:${secs < 10 ? "0" + secs : secs}`;
   };
 
-  const totalDuration = durationToSeconds(message.duration);
+  // Safe URL getter with additional Android URL validation
+  const getAudioUrl = () => {
+    if (!message.audio_url) {
+      console.log("No audio URL provided in message");
+      return null;
+    }
 
+    let url = message.audio_url;
+    console.log(`Original URL: ${url}`);
+
+    // Handle http to https conversion for iOS
+    if (Platform.OS === "ios" && url.startsWith("http:")) {
+      url = url.replace("http:", "https:");
+    }
+
+    // For Android, ensure the URL is properly formatted
+    if (Platform.OS === "android") {
+      // Remove any unwanted characters that might cause issues on Android
+      url = url.trim();
+
+      // Ensure the URL uses https for Android as well (many Android versions require it)
+      if (url.startsWith("http:")) {
+        url = url.replace("http:", "https:");
+      }
+    }
+
+    console.log(`Processed URL: ${url}`);
+    return url;
+  };
+
+  // Set up audio session with proper permissions handling for Android
   useEffect(() => {
     let audioSessionConfigured = false;
 
     const setupAudio = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          // iOS specific
-          playsInSilentModeIOS: true,
+        // For Android, request audio permissions explicitly
+        if (Platform.OS === "android") {
+          try {
+            const permissions = [
+              PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+              PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+            ];
 
-          // Android specific
+            // Request permissions if available (depends on Android version)
+            const granted = await PermissionsAndroid.requestMultiple(
+              permissions
+            );
+            console.log("Android permissions result:", granted);
+          } catch (err) {
+            console.warn(
+              "Android permissions error (may be normal on newer Android):",
+              err
+            );
+          }
+        }
+
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
           shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
-
-          // General
           staysActiveInBackground: true,
           allowsRecordingIOS: false,
         });
@@ -69,27 +112,41 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
         console.error("Failed to configure audio session:", error);
       }
     };
-
     setupAudio();
-
-    // Clean up on unmount
     return () => {
       isMounted.current = false;
     };
   }, []);
 
-  // Load the sound on component mount
+  useEffect(() => {
+    if (message.duration) {
+      const seconds = durationToSeconds(message.duration);
+      setTotalDurationSeconds(seconds);
+      setDisplayDuration(message.duration);
+      console.log(
+        `Initial duration set from message: ${message.duration} (${seconds}s)`
+      );
+    } else {
+      // Set a default if no duration provided
+      setDisplayDuration("0:00");
+      setTotalDurationSeconds(0);
+      console.log("No duration provided in message, using default");
+    }
+  }, [message.duration]);
+
   useEffect(() => {
     let mounted = true;
 
     const loadSound = async () => {
       const audioUrl = getAudioUrl();
-      if (!audioUrl) return;
+      if (!audioUrl) {
+        console.error("Cannot load sound: No valid audio URL");
+        return;
+      }
 
       try {
         console.log(`Loading sound on ${Platform.OS}:`, audioUrl);
 
-        // Clean up any existing sound first
         if (soundRef.current) {
           try {
             const status = soundRef.current
@@ -99,39 +156,30 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
               await soundRef.current.unloadAsync();
             }
           } catch (e) {
-            // Ignore cleanup errors
+            console.warn("Error unloading previous sound:", e);
           }
           soundRef.current = null;
         }
 
         setSoundLoaded(false);
 
-        // For iOS, make sure we use the correct initializer
         const soundObject = new Audio.Sound();
 
-        // Log before loading to help with debugging
-        console.log(`Attempting to load audio on ${Platform.OS}:`, {
-          uri: audioUrl,
-        });
-
-        // Load with detailed options
-        await soundObject.loadAsync(
-          { uri: audioUrl },
-          {
-            shouldPlay: false,
-            progressUpdateIntervalMillis: 100,
-            positionMillis: 0,
-            androidImplementation: "MediaPlayer",
-            // iOS sees volume as 0 to 1
-            volume: Platform.OS === "ios" ? 1.0 : 1.0,
-          }
-        );
-
-        console.log(`Audio loaded successfully on ${Platform.OS}`);
-
-        // Set up status monitoring
+        // Add more detailed error handler
         soundObject.setOnPlaybackStatusUpdate((status) => {
+          if (!mounted) return;
+
           if (status.isLoaded) {
+            // Update duration from the sound if available and not set
+            if (status.durationMillis && totalDurationSeconds === 0) {
+              const durationSecs = status.durationMillis / 1000;
+              setTotalDurationSeconds(durationSecs);
+              setDisplayDuration(formatTime(durationSecs));
+              console.log(
+                `Duration updated from sound: ${formatTime(durationSecs)}`
+              );
+            }
+
             if (status.didJustFinish) {
               console.log("Audio finished playing");
               if (mounted) {
@@ -145,25 +193,103 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
                 }
               }
             }
+          } else if (status.error) {
+            // Handle playback errors
+            console.error(`Playback error: ${status.error}`);
           }
         });
 
-        // Store reference and update state
-        soundRef.current = soundObject;
+        // Log all steps for debugging
+        console.log(
+          `Attempting to load audio on ${Platform.OS} with options:`,
+          {
+            uri: audioUrl,
+            options: {
+              shouldPlay: false,
+              progressUpdateIntervalMillis: 100,
+              positionMillis: 0,
+              androidImplementation: "MediaPlayer",
+              volume: 1.0,
+            },
+          }
+        );
 
-        if (mounted) {
-          setSoundLoaded(true);
-          console.log(`Sound ready to play on ${Platform.OS}`);
+        // Load with detailed options and more robust error handling
+        try {
+          await soundObject.loadAsync(
+            { uri: audioUrl },
+            {
+              shouldPlay: false,
+              progressUpdateIntervalMillis: 100,
+              positionMillis: 0,
+              androidImplementation: "MediaPlayer",
+              volume: 1.0,
+            }
+          );
+
+          // Get status to check duration
+          const status = await soundObject.getStatusAsync();
+          if (status.isLoaded && status.durationMillis) {
+            const durationSecs = status.durationMillis / 1000;
+            setTotalDurationSeconds(durationSecs);
+            setDisplayDuration(formatTime(durationSecs));
+            console.log(
+              `Duration from loaded sound: ${formatTime(durationSecs)}`
+            );
+          } else {
+            console.log("Sound loaded but duration not available in status");
+          }
+
+          console.log(`Audio loaded successfully on ${Platform.OS}`);
+          soundRef.current = soundObject;
+
+          if (mounted) {
+            setSoundLoaded(true);
+            console.log(`Sound ready to play on ${Platform.OS}`);
+          }
+        } catch (loadError) {
+          console.error(
+            `Specific error loading sound on ${Platform.OS}:`,
+            loadError
+          );
+
+          // Try an alternative approach for Android if initial load fails
+          if (Platform.OS === "android") {
+            console.log("Trying alternative loading method for Android...");
+            try {
+              await soundObject.loadAsync(
+                { uri: audioUrl },
+                {
+                  shouldPlay: false,
+                  androidImplementation: "SimpleExoPlayer", // Try ExoPlayer instead
+                }
+              );
+
+              console.log("Alternative loading method succeeded");
+              soundRef.current = soundObject;
+
+              if (mounted) {
+                setSoundLoaded(true);
+              }
+            } catch (altError) {
+              console.error(
+                "Alternative loading method also failed:",
+                altError
+              );
+            }
+          }
         }
       } catch (error) {
-        console.error(`Error loading sound on ${Platform.OS}:`, error);
+        console.error(
+          `Error in sound loading process on ${Platform.OS}:`,
+          error
+        );
         setSoundLoaded(false);
       }
     };
 
     loadSound();
 
-    // Clean up sound on unmount
     return () => {
       mounted = false;
 
@@ -178,7 +304,7 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
               await soundRef.current?.unloadAsync();
             }
           } catch (e) {
-            // Ignore cleanup errors
+            console.warn("Error cleaning up sound:", e);
           }
         })();
       }
@@ -189,7 +315,6 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
     };
   }, [message.audio_url]);
 
-  // Handle play/pause
   const handlePlayPause = async () => {
     if (!soundLoaded || !soundRef.current) {
       console.log("Sound not loaded yet, cannot play/pause");
@@ -205,9 +330,11 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
 
   const startPlayback = async () => {
     try {
-      if (!soundRef.current || !soundLoaded) return;
+      if (!soundRef.current || !soundLoaded) {
+        console.log("Cannot start playback: Sound not loaded");
+        return;
+      }
 
-      // Check sound status
       const status = await soundRef.current.getStatusAsync();
       if (!status.isLoaded) {
         console.log("Sound not loaded, reloading...");
@@ -216,41 +343,46 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
 
         try {
           await soundRef.current.loadAsync({ uri: audioUrl });
+          // Check loading success
+          const newStatus = await soundRef.current.getStatusAsync();
+          if (!newStatus.isLoaded) {
+            console.error("Failed to reload sound");
+            return;
+          }
         } catch (e) {
           console.error("Failed to reload sound:", e);
           return;
         }
       }
 
-      // Set position and play
       console.log(
         `Starting audio playback on ${Platform.OS} at position:`,
         playbackTime
       );
 
-      // iOS specific: ensure the volume is set to maximum
-      if (Platform.OS === "ios") {
-        await soundRef.current.setVolumeAsync(1.0);
-      }
+      // Set volume for both platforms
+      await soundRef.current.setVolumeAsync(1.0);
 
       await soundRef.current.setPositionAsync(playbackTime * 1000);
+
+      if (Platform.OS === "android") {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
       await soundRef.current.playAsync();
 
       console.log(`Audio playback started on ${Platform.OS}`);
 
-      // Update UI with timer
       const id: any = setInterval(() => {
         setPlaybackTime((prev) => {
-          if (prev >= totalDuration) {
+          if (prev >= totalDurationSeconds) {
             clearInterval(id);
             setIntervalId(null);
             setIsActive(false);
-
-            // Stop audio if it hasn't automatically stopped
             try {
               soundRef.current?.stopAsync();
             } catch (e) {
-              // Ignore errors
+              console.warn("Error stopping sound:", e);
             }
 
             return 0;
@@ -268,16 +400,12 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
   };
 
   const pausePlayback = async () => {
-    // First, update UI state immediately for better responsiveness
     if (intervalId) {
       clearInterval(intervalId);
       setIntervalId(null);
     }
-
     setIsActive(false);
     setIsPlaying(message.id, false);
-
-    // Then try to pause audio if possible
     try {
       if (soundRef.current) {
         const status = await soundRef.current.getStatusAsync();
@@ -297,12 +425,10 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
   ) => {
     const { locationX } = event.nativeEvent;
     const percentage = Math.min(Math.max(locationX / containerWidth, 0), 1);
-    const newTime = percentage * totalDuration;
+    const newTime = percentage * totalDurationSeconds;
 
-    // Update UI first for responsiveness
     setPlaybackTime(newTime);
 
-    // Try to seek in the audio file
     try {
       if (soundRef.current && soundLoaded) {
         const status = await soundRef.current.getStatusAsync();
@@ -320,9 +446,8 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
     }
   };
 
-  // Handle end of playback
   useEffect(() => {
-    if (playbackTime >= totalDuration) {
+    if (playbackTime >= totalDurationSeconds && totalDurationSeconds > 0) {
       setPlaybackTime(0);
       setIsActive(false);
       setIsPlaying(message.id, false);
@@ -332,7 +457,6 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
         setIntervalId(null);
       }
 
-      // Try to stop audio if still playing
       try {
         if (soundRef.current) {
           const checkAndStopSound = async () => {
@@ -344,12 +468,11 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
           checkAndStopSound();
         }
       } catch (e) {
-        // Ignore errors
+        console.warn("Error stopping sound at end:", e);
       }
     }
-  }, [playbackTime, totalDuration, message.id, intervalId]);
+  }, [playbackTime, totalDurationSeconds, message.id, intervalId]);
 
-  // Generate the waveform
   const generateWaveform = () => {
     const bars = [];
     const count = 20;
@@ -363,7 +486,8 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
 
   const waveform = generateWaveform();
 
-  const progress = (playbackTime / totalDuration) * 100;
+  const progress =
+    totalDurationSeconds > 0 ? (playbackTime / totalDurationSeconds) * 100 : 0;
 
   const activeBarCount = Math.floor((progress / 100) * waveform.length);
 
@@ -390,7 +514,7 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={(event) => {
-              const containerWidth = SCREEN_WIDTH * 0.7 - 70; // Approximate width minus play button
+              const containerWidth = SCREEN_WIDTH * 0.7 - 70;
               handleSeek(event, containerWidth);
             }}
             className="flex-1 h-6 justify-center"
@@ -433,7 +557,7 @@ export const VoiceMessage = ({ message, setIsPlaying, hideContainer }: any) => {
               message.isSent ? "text-white" : "text-black"
             }`}
           >
-            {message.duration}
+            {displayDuration}
           </Text>
         </View>
       </View>

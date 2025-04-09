@@ -1,4 +1,4 @@
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { createPost } from "@/lib/get-post-data/post-fucntions";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";

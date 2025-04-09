@@ -11,6 +11,8 @@ import handphone from "../assets/images/handphone.png";
 import paperplane from "../assets/images/paperplane.png";
 import search from "../assets/images/search.png";
 import chat from "../assets/images/chat.png";
+import women from "../assets/images/woman pondering a question 1.png";
+import record from "../assets/images/Content creator recording a podcast 1.png";
 export default {
   profile,
   thumbnail,
@@ -24,4 +26,6 @@ export default {
   paperplane,
   search,
   chat,
+  women,
+  record,
 };

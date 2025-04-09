@@ -58,11 +58,9 @@
 import React, { useMemo } from "react";
 import { View, Text, Image } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
-import ProfileAvatar, {
-  getInitials,
-  getRandomColor,
-} from "@/components/ProfileAvatar";
+import ProfileAvatar, { getInitials } from "@/components/ProfileAvatar";
 import { pbFileUrl } from "@/lib/getData/GetVideos";
+import { getRandomColor } from "@/hooks/useContacts";
 
 const ProfileHeader = ({ userData, isCurrentUser = false }: any) => {
   const isPublicAccount = !isCurrentUser && userData?.account_type === "public";

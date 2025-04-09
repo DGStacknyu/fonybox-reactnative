@@ -2,7 +2,7 @@ import { ChatListHeader } from "@/components/chats/MainChat/ChatListHeader";
 import { ChatListSearch } from "@/components/chats/MainChat/ChatListSearch";
 import { ConversationItem } from "@/components/chats/MainChat/ConversationItem";
 import { pb } from "@/components/pocketbaseClient";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { getUserChats } from "@/lib/get-chat-data/get-private-chat";
 import { getColorFromId } from "@/utils/audio/groupChatHelpers";
 import { formatDistanceToNow } from "date-fns";

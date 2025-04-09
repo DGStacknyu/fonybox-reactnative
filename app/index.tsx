@@ -1,7 +1,7 @@
 import Loader from "@/components/Loader";
 import AuthCustomButton from "@/components/oAuthCustomButton";
 import { images } from "@/constants";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, Redirect, router } from "expo-router";

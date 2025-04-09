@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import FormField from "@/components/FormField";
 import CustomButton from "@/components/CustomButton";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { pb } from "@/components/pocketbaseClient";
 import { Link, router } from "expo-router";
 import { images } from "@/constants";

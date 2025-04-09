@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { pb } from "@/components/pocketbaseClient";
-import { useGlobalContext } from "@/lib/AuthContext";
+import { useGlobalContext } from "@/context/AuthContext";
 import { RecordModel } from "pocketbase";
 
 const GroupInfoScreen = () => {
@@ -35,6 +35,7 @@ const GroupInfoScreen = () => {
   const [error, setError] = useState("");
   const { user } = useGlobalContext();
   const currentUserId = user?.id || null;
+  const [isMember, setIsMember] = useState(false); // New state for membership status
 
   const isAdmin = members.some(
     (member) => member.user === currentUserId && member.role === "admin"
@@ -45,17 +46,25 @@ const GroupInfoScreen = () => {
       try {
         setIsLoading(true);
 
+        // Fetch group details
         const group = await pb.collection("groups").getOne(id as string, {
           expand: "created_by",
         });
 
+        // Fetch members
         const membersResult = await pb.collection("group_members").getFullList({
           filter: `group = "${id}"`,
           expand: "user",
         });
 
+        // Check if current user is a member
+        const userIsMember = membersResult.some(
+          (member) => member.user === currentUserId
+        );
+
         setGroupChat(group);
         setMembers(membersResult);
+        setIsMember(userIsMember);
 
         if (group.image) {
           const imageUrl = pb.files.getUrl(group, group.image);
@@ -73,7 +82,68 @@ const GroupInfoScreen = () => {
     if (id) {
       fetchGroupInfo();
     }
-  }, [id]);
+  }, [id, currentUserId]);
+
+  const handleJoinGroup = async () => {
+    try {
+      setIsLoading(true);
+      const data = {
+        group: id,
+        user: currentUserId,
+        role: "member",
+        status: "offline",
+      };
+
+      await pb.collection("group_members").create(data);
+
+      const updatedMembers = await pb.collection("group_members").getFullList({
+        filter: `group = "${id}"`,
+        expand: "user",
+      });
+
+      setMembers(updatedMembers);
+      setIsMember(true);
+    } catch (err) {
+      console.error("Error joining group:", err);
+      Alert.alert("Error", "Failed to join group");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLeaveGroup = () => {
+    Alert.alert("Leave Group", "Are you sure you want to leave this group?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Leave",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const currentUserMember = members.find(
+              (m) => m.user === currentUserId
+            );
+            if (currentUserMember) {
+              await pb.collection("group_members").delete(currentUserMember.id);
+              setIsMember(false);
+
+              // Refresh members list
+              const updatedMembers = await pb
+                .collection("group_members")
+                .getFullList({
+                  filter: `group = "${id}"`,
+                  expand: "user",
+                });
+
+              setMembers(updatedMembers);
+            }
+          } catch (err) {
+            console.error("Error leaving group:", err);
+            Alert.alert("Error", "Failed to leave group");
+          }
+        },
+      },
+    ]);
+  };
 
   if (isLoading) {
     return (
@@ -185,29 +255,29 @@ const GroupInfoScreen = () => {
     );
   };
 
-  const handleLeaveGroup = () => {
-    Alert.alert("Leave Group", "Are you sure you want to leave this group?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Leave",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const currentUserMember = members.find(
-              (m) => m.user === currentUserId
-            );
-            if (currentUserMember) {
-              await pb.collection("group_members").delete(currentUserMember.id);
-            }
-            router.push("/GroupChat");
-          } catch (err) {
-            console.error("Error leaving group:", err);
-            Alert.alert("Error", "Failed to leave group");
-          }
-        },
-      },
-    ]);
-  };
+  // const handleLeaveGroup = () => {
+  //   Alert.alert("Leave Group", "Are you sure you want to leave this group?", [
+  //     { text: "Cancel", style: "cancel" },
+  //     {
+  //       text: "Leave",
+  //       style: "destructive",
+  //       onPress: async () => {
+  //         try {
+  //           const currentUserMember = members.find(
+  //             (m) => m.user === currentUserId
+  //           );
+  //           if (currentUserMember) {
+  //             await pb.collection("group_members").delete(currentUserMember.id);
+  //           }
+  //           router.push("/GroupChat");
+  //         } catch (err) {
+  //           console.error("Error leaving group:", err);
+  //           Alert.alert("Error", "Failed to leave group");
+  //         }
+  //       },
+  //     },
+  //   ]);
+  // };
 
   const getInitial = (name: string) => {
     return name ? name.charAt(0).toUpperCase() : "G";
@@ -440,12 +510,27 @@ const GroupInfoScreen = () => {
           </View>
         </View>
 
-        <TouchableOpacity
-          className="mt-10 mb-10 mx-5 p-4 bg-[#FEE4E7] rounded-lg items-center"
-          onPress={handleLeaveGroup}
-        >
-          <Text className="text-[#F52936] font-medium">Leave Group</Text>
-        </TouchableOpacity>
+        {currentUserId && (
+          <TouchableOpacity
+            className={`mt-10 mb-10 mx-5 p-4 rounded-lg items-center ${
+              isMember ? "bg-[#FEE4E7]" : "bg-[#E8F5E9]"
+            }`}
+            onPress={isMember ? handleLeaveGroup : handleJoinGroup}
+            disabled={isLoading}
+          >
+            <Text
+              className={`font-medium ${
+                isMember ? "text-[#F52936]" : "text-[#4CAF50]"
+              }`}
+            >
+              {isLoading
+                ? "Loading..."
+                : isMember
+                ? "Leave Group"
+                : "Join Group"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
